@@ -1,0 +1,24 @@
+idade = 30;
+preco_unitario = 99.99;
+if (idade > 20 && preco_unitario < 100.0) {
+    int resultado = 1;
+    char letra = 'X';
+    string mensagem = "Condicao verdadeira!";
+    return resultado;
+} else if (idade < 20 || preco_unitario > 100.0) {
+    while(true) {
+        break;
+        continue;
+    }
+}
+/* Este
+/* ERROS PARA SIMULAR */
+/* @ --> Identificador inexistente */
+/* 1.1.1 --> realcon mal formado */
+/* ! --> o ! puro não quer dizer nada, precisa ser != */
+/* || e && --> não reconhece (tirar dúvida com atta) */
+/* char ab = 'aaa'; --> char com mais de um caractere */
+/* char 'a; --> falta ' no final */
+/* stringcon a = "a; --> falta " no final */
+/* '\x'; --> escape que não existe
+/*ERROS (BUGS) --> /n, comentários abertos são aceitos, /0*/ 
