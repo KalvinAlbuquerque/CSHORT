@@ -30,8 +30,8 @@ enum SINAIS {
     OP_MENOR_IGUAL,
     OP_IGUAL,
     OP_DIFERENTE,
-    OP_AND,         // Novo: Operador AND (&&)
-    OP_OR,          // Novo: Operador OR (||)
+    OP_AND,         
+    OP_OR,          
     ABRE_PARENTESES,
     FECHA_PARENTESES,
     VIRGULA,

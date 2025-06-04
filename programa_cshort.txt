@@ -11,7 +11,7 @@ if (idade > 20 && preco_unitario < 100.0) {
         continue;
     }
 }
-/* Este
+
 /* ERROS PARA SIMULAR */
 /* @ --> Identificador inexistente */
 /* 1.1.1 --> realcon mal formado */
