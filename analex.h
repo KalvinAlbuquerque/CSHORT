@@ -14,7 +14,7 @@ enum TOKEN_CAT {
     COMENTARIO, // Comentário (embora não retorne token, pode ser útil para depuração)
     FIM_EXPR,   // Representa o ';' (ponto e vírgula)
     FIM_ARQ,    // Fim do arquivo
-    PALAVRA_RESERVADA // Nova categoria para palavras reservadas
+    PALAVRA_RESERVADA // Palavras reservadas
 };
 
 // Enumeradores para os códigos dos sinais/operadores
@@ -42,7 +42,6 @@ enum SINAIS {
 };
 
 // Enumeradores para as palavras reservadas (usar um enum separado ou códigos dentro de PALAVRA_RESERVADA)
-// Aqui, optei por um enum separado para clareza e para associar facilmente o nome à palavra
 enum PALAVRAS_RESERVADAS_CODIGO {
     PR_IF = 1,
     PR_ELSE,
@@ -50,12 +49,11 @@ enum PALAVRAS_RESERVADAS_CODIGO {
     PR_FOR,
     PR_RETURN,
     PR_INT,
-    PR_FLOAT, // Ou PR_DOUBLE, dependendo da sua linguagem
+    PR_FLOAT, 
     PR_CHAR,
-    PR_STRING, // Ou PR_VOID, etc.
+    PR_STRING, 
     PR_BREAK,
     PR_CONTINUE
-    // Adicione mais palavras reservadas conforme necessário
 };
 
 typedef

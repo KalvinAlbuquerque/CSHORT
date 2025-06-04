@@ -367,7 +367,7 @@ TOKEN AnaLex(FILE *fd) {
                 } else if (c == '/') { // Fim de comentário */
                     estado = 0; // Comentário fechado, volta ao estado inicial para buscar o próximo token
                     // Não retorna token, o loop `while(true)` no `AnaLex` continua do `case 0`.
-                } else { // Não era o fim do comentário (e.g., "**texto**")
+                } else { // Não era o fim do comentário ("**texto**")
                     ungetc(c, fd); // Devolve o caractere para ser reavaliado no estado 19
                     estado = 19; // Volta para o estado 19 (ainda dentro do comentário)
                 }
@@ -442,8 +442,8 @@ int main() {
                     case OP_MENOR_IGUAL: printf("<SN, OP_MENOR_IGUAL> "); break;
                     case OP_IGUAL: printf("<SN, OP_IGUAL> "); break;
                     case OP_DIFERENTE: printf("<SN, OP_DIFERENTE> "); break;
-                    case OP_AND: printf("<SN, OP_AND> "); break; // Novo
-                    case OP_OR: printf("<SN, OP_OR> "); break;   // Novo
+                    case OP_AND: printf("<SN, OP_AND> "); break; 
+                    case OP_OR: printf("<SN, OP_OR> "); break;   
                     case ABRE_PARENTESES: printf("<SN, ABRE_PARENTESES> "); break;
                     case FECHA_PARENTESES: printf("<SN, FECHA_PARENTESES> "); break;
                     case VIRGULA: printf("<SN, VIRGULA> "); break;
@@ -465,7 +465,7 @@ int main() {
             case CT_STRING:
                 printf("<CT_STRING, \"%s\"> ", tk.lexema);
                 break;
-            case PALAVRA_RESERVADA: // Novo case para palavras reservadas
+            case PALAVRA_RESERVADA: 
                 switch (tk.codigo) {
                     case PR_IF: printf("<PR, if> "); break;
                     case PR_ELSE: printf("<PR, else> "); break;
@@ -478,7 +478,7 @@ int main() {
                     case PR_STRING: printf("<PR, string> "); break;
                     case PR_BREAK: printf("<PR, break> "); break;
                     case PR_CONTINUE: printf("<PR, continue> "); break;
-                    // Adicione mais casos para palavras reservadas aqui
+                    
                 }
                 break;
 
