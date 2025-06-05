@@ -1,0 +1,20 @@
+Se vc criou o ct_bn e ct_bz, vc vai ter que criar ct_aspas
+
+
+DÚVIDAS:
+Em relação aos escapes 
+'\n' e '\0' (charcon)
+Criei duas categorias para isso: CT_BZ, CT_BN 
+Isso está correto? 
+Se eu encontrar um '\n' (literalmente assim), eu vou categorizar como BN. O mesmo vale para BZ
+
+De mesmo modo, em stringcon a especificação fala que stringcon = {CH}, em que CH é diferente de \n e aspas. Portanto, tomei a liberdade
+de criar um escape \", semelhante ao C. 
+Se for pra seguir o mesmo ritmo do charcon, eu deveria criar também um CT_ASPAS e inclusive incluir no AFD.
+
+Além disso, supondo que tudo que perguntei até aqui seja verdadeiro, eu teria que manter o CT_BN ou criaria um novo para stringcon? Digo isso pensando no AFD,
+pois ter dois estados com o mesmo nome ficaria estranho certo? Pq um seria com apóstrofo e outro com aspas.
+
+Outra coisa, até entendo não aceitar escapes como \t ou \k - os quais não estão incluídos na especificação, no charcon.
+Mas no stringcon, eu devo aceitar algo como "\k" e printar literalmente isso? 
+As linguagens c like barram qualquer coisa que vier depois da barra invertida. Eu segui essa lógica, devo remover?

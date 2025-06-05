@@ -1,1 +1,1 @@
-gcc analex.c -o analisador_cshort
+gcc main.c analex.c -o analisador_cshort

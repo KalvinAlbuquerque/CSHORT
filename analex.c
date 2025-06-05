@@ -1,47 +1,84 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <ctype.h>
-#include <string.h>
-#include <stdbool.h>
 #include "analex.h"
 
-// Inicialização da variável contLinha
-int contLinha = 1; // Inicia na linha 1
 
-// Função para printar erro
-void error(char msg[]) {
-    printf("Erro na linha %d: %s\n", contLinha, msg);
+
+/******************** VARIÁVEIS GLOBAIS  ****************************************/
+//Variável para contar linhas do código Cshort
+int contLinha = 1; 
+
+void error(char msg[]) 
+{
+    //fprintf(stderr, "Erro na linha %d: %s\n", contLinha, msg);
+    printf("\nErro na linha %d: %s\n", contLinha, msg);
     exit(1); // Encerra o programa imediatamente em caso de erro léxico
 }
 
-// Funções auxiliares...
-bool is_letter(char c) {
+bool is_letter(char c) 
+{
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-bool is_digit(char c) {
+bool is_digit(char c) 
+{
     return (c >= '0' && c <= '9');
 }
 
-bool is_printable_ascii(char c) {
+bool is_printable_ascii(char c) 
+{
     return isprint(c);
 }
 
-// Função para verificar se um lexema é uma palavra reservada
-// Retorna o código da palavra reservada se for, 0 caso contrário
-int check_reserved_word(const char *lexema) {
-    if (strcmp(lexema, "if") == 0) return PR_IF;
-    if (strcmp(lexema, "else") == 0) return PR_ELSE;
-    if (strcmp(lexema, "while") == 0) return PR_WHILE;
-    if (strcmp(lexema, "for") == 0) return PR_FOR;
-    if (strcmp(lexema, "return") == 0) return PR_RETURN;
-    if (strcmp(lexema, "int") == 0) return PR_INT;
-    if (strcmp(lexema, "float") == 0) return PR_FLOAT;
-    if (strcmp(lexema, "char") == 0) return PR_CHAR;
-    if (strcmp(lexema, "string") == 0) return PR_STRING;
-    if (strcmp(lexema, "break") == 0) return PR_BREAK;
-    if (strcmp(lexema, "continue") == 0) return PR_CONTINUE;
-    // Adicione mais palavras reservadas aqui
+int check_reserved_word(const char *lexema) 
+{
+    if (strcmp(lexema, "if") == 0)
+    {
+        return PR_IF;
+    } 
+    if (strcmp(lexema, "else") == 0)
+    {
+        return PR_ELSE;
+    }
+    if (strcmp(lexema, "while") == 0)
+    {
+        return PR_WHILE;
+    }
+    if (strcmp(lexema, "for") == 0)
+    {
+        return PR_FOR;
+    } 
+    if (strcmp(lexema, "return") == 0)
+    {
+        return PR_RETURN;
+    } 
+    if (strcmp(lexema, "intcon") == 0)
+    {
+        return PR_INTCON;
+    } 
+    if (strcmp(lexema, "realcon") == 0)
+    {
+        return PR_REALCON;
+    }
+    if (strcmp(lexema, "charcon") == 0)
+    {
+        return PR_CHARCON;
+    } 
+    if (strcmp(lexema, "stringcon") == 0)
+    {
+        return PR_STRINGCON;
+    }
+    if (strcmp(lexema, "break") == 0) 
+    {
+        return PR_BREAK;
+    }
+    if (strcmp(lexema, "continue") == 0)
+    {
+        return PR_CONTINUE;
+    }
+    if (strcmp(lexema, "void") == 0)
+    {
+        return PR_VOID;
+    }
+
     return 0; // Não é palavra reservada
 }
 
@@ -49,276 +86,580 @@ int check_reserved_word(const char *lexema) {
 //Função AnaLex
 //Recebe um arquivo
 //Retorna um TOKEN
-TOKEN AnaLex(FILE *fd) {
-    int estado = 0;
-    char lexema[TAM_MAX_LEXEMA] = "";
-    int tamL = 0;
-    char digitos_int[TAM_NUM] = "";
-    int tamDI = 0;
-    char digitos_real[TAM_NUM] = "";
-    int tamDR = 0;
-    TOKEN t;
+TOKEN Analex(FILE *fd) 
+{
+    int estado = 0; //Variável para controlar os estados do AFD
+    char lexema[TAM_MAX_LEXEMA] = ""; //Array para guardar o lexema
+    /* LEXEMA (Para nunca mais esquecer) 
+        Definição: palavra ou símbolo específico encontrado no código-fonte
+        que corresponde a uma categoria léxica(token), como palavra-chave,
+        identificador, dígito, sinais, operador,etc.
+
+        Token --> dígito
+        Lexema --> 555555
+
+        Token --> Categoria abstrata
+        Lexema --> Representação concreta de um determinado token
+    */
+    int tamanho_lexema = 0; //Contador para armazenar o tamanho do lexema
+    char digitos_int[TAM_NUM] = ""; //Array para armazenar os dígitos inteiros
+    int tamanho_digito = 0; //Contador para armazenar o tamanho do dígito
+    char digitos_real[TAM_NUM] = ""; //Array para armazenar os dígitos reais
+    int tamanho_digito_real = 0; //Contador para armazenar o tamanho do digito real
+    TOKEN t; //Variável token que será atualizada para cada token lido.
     int c; // 'c' DEVE SER INT para fgetc() retornar EOF corretamente
 
-    // Loop principal do analisador léxico que continua até encontrar um token
-    // ou um erro fatal que encerre o programa.
-    while (true) {
-        switch (estado) {
-            case 0: // Estado Inicial
-                // --- TRATAMENTO DE ESPAÇOS EM BRANCO E QUEBRAS DE LINHA ---
-                // Consome e ignora múltiplos espaços, tabulações, retornos de carro e quebras de linha.
-                while (true) { // Loop interno para consumir brancos
+    /* 
+        Loop principal. 
+        Continua até encontrar um token ou um erro (neste caso, encerra o programa)
+    */
+    while (true) 
+    {
+        switch (estado) 
+        {
+            case 0: // Estado Inicial (Q0)
+
+                /*  
+                    Tratando espaços em branco e quebras de linha
+                    Fica em um loop infinito até encontrar um caractere não branco ou um EOF
+                */
+                while (true) 
+                { 
                     c = fgetc(fd);
-                    if (c == ' ' || c == '\t' || c == '\r') {
-                        continue; // Continua consumindo espaços e tabulações
-                    } else if (c == '\n') {
+                    //Se for vazio ou tab
+                    if (c == ' ' || c == '\t' || c == '\r') 
+                    {
+                        continue; 
+                    } 
+                    else if (c == '\n') 
+                    {
                         contLinha++;
-                        continue; // Continua consumindo quebras de linha
-                    } else {
+                        continue; 
+                    } 
+                    else 
+                    {
                         break; // Caractere não branco ou EOF encontrado, sai deste loop interno
                     }
                 }
-                // --- Fim do tratamento de espaços ---
 
                 // Se após consumir brancos, chegamos ao EOF, retorna o token FIM_ARQ.
-                if (c == EOF) {
+                if (c == EOF) //Q28 no AFD
+                {
                     t.cat = FIM_ARQ;
                     return t;
                 }
 
                 // Reseta os buffers e contadores para o novo token
-                tamL = 0;
-                tamDI = 0;
-                tamDR = 0;
+                tamanho_lexema = 0;
+                tamanho_digito = 0;
+                tamanho_digito_real = 0;
 
-                // Agora, 'c' é o primeiro caractere *significativo* de um potencial token.
-                if (is_letter(c)) { // Início de Identificador ou Palavra Reservada
-                    estado = 1; // Vai para o estado de reconhecimento de ID/Palavra Reservada
-                    if (tamL < TAM_MAX_LEXEMA - 1) {
-                        lexema[tamL++] = (char)c;
+                // Aqui 'c' é o primeiro caractere *significativo* de um potencial token.
+                // Estado de Identificador ou Palavra Reservada (primeiro caractere é letra)
+                if (is_letter(c)) 
+                { 
+                    estado = 1; //Vai para o estado de reconhecimento de Identificador/Palavra Reservada
+                    if (tamanho_lexema < TAM_MAX_LEXEMA - 1) 
+                    {
+                        lexema[tamanho_lexema] = (char)c;
+                        tamanho_lexema++;
                     }
                     else error("Identificador muito longo.");
-                } else if (is_digit(c)) { // Início de Constante Inteira (primeiro caractere é dígito)
-                    estado = 2; // Vai para o estado de reconhecimento de CT_INT
-                    if (tamDI < TAM_NUM - 1) digitos_int[tamDI++] = (char)c;
-                    else error("Constante inteira muito longa.");
-                } else if (c == '+') {
-                    t.cat = SN; t.codigo = OP_SOMA; return t;
-                } else if (c == '-') {
-                    t.cat = SN; t.codigo = OP_SUBTRACAO; return t;
-                } else if (c == '*') {
-                    t.cat = SN; t.codigo = OP_MULTIPLICACAO; return t;
-                } else if (c == '=') {
+                }
+                // Início de Constante Inteira(primeiro caractere é dígito)
+                else if (is_digit(c)) 
+                { 
+                    estado = 2; // Vai para o estado de reconhecimento de CT_INT 
+                    if(tamanho_digito < TAM_NUM - 1) 
+                    {
+                        digitos_int[tamanho_digito] = (char)c;
+                        tamanho_digito++;
+                    }
+                    else
+                    {
+                        error("Constante inteira muito longa.");
+                    } 
+                } 
+                /* SINAIS/OPERADORES */
+                /* Sinais que não precisam setar o estado, posso retornar logo aqui */
+                //ADIÇÃO - Q23
+                else if (c == '+') 
+                {
+                    t.cat = SN; 
+                    t.codigo = SN_SOMA; 
+                    return t;
+                }
+                //SUBTRAÇÃO - Q24
+                else if (c == '-') 
+                {
+                    t.cat = SN; 
+                    t.codigo = SN_SUBTRACAO;
+                    return t;
+                }
+                //MULTIPLICAÇÃO - Q25
+                else if (c == '*') 
+                {
+                    t.cat = SN; 
+                    t.codigo = SN_MULTIPLICACAO; 
+                    return t;
+                }
+                //ABRE PARÊNTESES  - Q18
+                else if (c == '(') 
+                {
+                    t.cat = SN; 
+                    t.codigo = ABRE_PARENTESES;
+                    return t;
+                }
+                //FECHA PARÊNTESES - Q17 
+                else if (c == ')') 
+                {
+                    t.cat = SN;
+                    t.codigo = FECHA_PARENTESES; 
+                    return t;
+                }
+                //ABRE CHAVES - Q19
+                else if (c == '{') 
+                {
+                    t.cat = SN; 
+                    t.codigo = ABRE_CHAVES; 
+                    return t;
+                }
+                //FECHA CHAVES - Q20 
+                else if (c == '}') 
+                {
+                    t.cat = SN; 
+                    t.codigo = FECHA_CHAVES; 
+                    return t;
+                }
+                //ABRE COLCHETE - Q21 
+                else if (c == '[') 
+                {
+                    t.cat = SN; 
+                    t.codigo = ABRE_COLCHETES; 
+                    return t;
+                }
+                //FECHA COLCHETE - Q22 
+                else if (c == ']') 
+                {
+                    t.cat = SN; 
+                    t.codigo = FECHA_COLCHETES; 
+                    return t;
+                }
+                //PONTO E VÍRGULA - Q26
+                else if (c == ';') 
+                { 
+                    t.cat = SN;
+                    t.codigo = PONTO_VIRGULA; 
+                    return t;
+                }
+                //VÍRGULA - Q27
+                else if (c == ',') 
+                {
+                    t.cat = SN; 
+                    t.codigo = VIRGULA; 
+                    return t;
+                }
+                //ATRIBUIÇÃO E POSSÍVEL COMPARAÇÃO - Q35 - Q37
+                else if (c == '=') 
+                {
                     estado = 8;
-                } else if (c == '!') {
+                }
+                //NEGAÇÃO E POSSÍVEL DIFERENTE  - Q46 - Q48
+                else if (c == '!') 
+                {
                     estado = 9;
-                } else if (c == '<') {
+                } 
+                //MENOR QUE E POSSÍVEL MENOR IGUAL - Q34 - Q33
+                else if (c == '<') 
+                {
                     estado = 10;
-                } else if (c == '>') {
+                } 
+                //MAIOR QUE E POSSÍVEL MAIOR IGUAL - Q29 - Q32
+                else if (c == '>') 
+                {
                     estado = 11;
-                } else if (c == '/') {
-                    estado = 15; // Pode ser divisão ou início de comentário
-                } else if (c == '&') { // Início potencial de &&
+                } 
+                // INÍCIO CHARCON - Q2 -Q5
+                // Para não esquecer ... \' em C é a forma de você simbolizar as aspas simples ou apóstrofo
+                else if (c == '\'') 
+                {
+                    estado = 12;                 
+                }
+                // INÍCIO STRINGCON - Q15-Q16
+                else if (c == '"') 
+                {
+                    estado = 13; 
+                }
+                //Estado de divisão ou possível comentário
+                //No AFD são Q42 - Q45
+                else if (c == '/') 
+                {
+                    estado = 15; 
+                } 
+                //Estado inicial para && (operador AND)
+                // No AFD são Q38 - Q39
+                else if (c == '&') 
+                { 
+                    // Início potencial de &&
                     estado = 21;
-                } else if (c == '|') { // Início potencial de ||
-                    estado = 22;
-                } else if (c == '(') {
-                    t.cat = SN; t.codigo = ABRE_PARENTESES; return t;
-                } else if (c == ')') {
-                    t.cat = SN; t.codigo = FECHA_PARENTESES; return t;
-                } else if (c == '{') {
-                    t.cat = SN; t.codigo = ABRE_CHAVES; return t;
-                } else if (c == '}') {
-                    t.cat = SN; t.codigo = FECHA_CHAVES; return t;
-                } else if (c == '[') {
-                    t.cat = SN; t.codigo = ABRE_COLCHETES; return t;
-                } else if (c == ']') {
-                    t.cat = SN; t.codigo = FECHA_COLCHETES; return t;
-                } else if (c == ';') { // ';' agora é FIM_EXPR
-                    t.cat = FIM_EXPR; return t;
-                } else if (c == ',') {
-                    t.cat = SN; t.codigo = VIRGULA; return t;
-                } else if (c == '\'') {
-                    estado = 12; // Início de Charcon
-                } else if (c == '"') {
-                    estado = 13; // Início de Stringcon
-                } else {
+                } 
+                //Estado inicial para || (operador OR)
+                // No AFD são Q40 - Q41
+                else if (c == '|') 
+                { 
+                    estado = 22; //Vai para o estado do potencial OR
+                }  
+                //Se o caracter não for válido, aponto erro.
+                else 
+                {
                     // Se o caractere não se encaixar em NENHUMA regra léxica neste ponto, é um erro.
-                    char msg_err[100]; // Tamanho aumentado para evitar overflow
+                    char msg_err[100]; 
                     sprintf(msg_err, "Caracter '%c' invalido.", c);
                     error(msg_err);
                 }
                 break;
+            
 
-            case 1: // Estado de Identificador ou Palavra Reservada (após a primeira letra)
+            /************************************** TRATAMENTO DE ESTADOS *******************************************************/ 
+            
+            // Estado de Identificador ou Palavra Reservada (após a primeira letra)
+            // No AFD é o Q1 - Q3
+            case 1: 
                 c = fgetc(fd); // Lê o próximo caractere
-                if (is_letter(c) || is_digit(c) || c == '_') {
-                    if (tamL < TAM_MAX_LEXEMA - 1) lexema[tamL++] = (char)c;
-                    else error("Identificador excede o tamanho maximo.");
-                    // Permanece no estado 1, esperando mais caracteres do ID
-                } else { // Fim do ID/Palavra Reservada - o caractere 'c' NÃO faz parte
-                    ungetc(c, fd); // Devolve 'c' para ser lido na próxima iteração
-                    lexema[tamL] = '\0'; // Termina o lexema
-                    int pr_codigo = check_reserved_word(lexema); // Verifica se é palavra reservada
+                //Se o próximo caractere 'c' for letra, digito ou '_'
+                if (is_letter(c) || is_digit(c) || c == '_') 
+                {   
+                    //Se o lemexa for menor que o tamanho destinado para o nosso buffer (retirando o -1 do caractere final)
+                    //adicionamos o 'c' lido ao lexema e incrementamos o contador de tamanho.
+                    if (tamanho_lexema < TAM_MAX_LEXEMA - 1)
+                    {
+                        lexema[tamanho_lexema] = (char)c;
+                        tamanho_lexema++;
+                    }
+                    else
+                    {   
+                        //Caso tenha excedido o tamanho do buffer estipulado
+                        error("Identificador excede o tamanho maximo.");
+                    }
+                    //Permanece no estado 1.
+                    //Não há troca de estado, pois aguardaremos mais letras, dígitos ou '_' para o Identificador ou Palavra Reservada.                      
+                } 
+                else 
+                { 
+                    // Fim do ID/Palavra Reservada
+                    //Se o cactere 'c' não for letra, dígito ou '_', precisamos ir para outro estado.
+                    ungetc(c, fd); // Devolvo 'c' para ser lido na próxima iteração
+                    lexema[tamanho_lexema] = '\0'; // Termina o lexema incluindo o '\0' ao final.
 
-                    if (pr_codigo != 0) {
+                    //Verifico se é palavra reservada
+                    int pr_codigo = check_reserved_word(lexema);
+                    //Se for palavra reservada
+                    if (pr_codigo != 0)
+                    {
                         t.cat = PALAVRA_RESERVADA;
                         t.codigo = pr_codigo;
-                    } else {
+                    } 
+                    //Se for Identificador
+                    else 
+                    {   
                         t.cat = ID;
                         strcpy(t.lexema, lexema);
                     }
-                    estado = 0; // Resetar estado para o próximo token
+
+                    //Retorno o token analisado
                     return t;
                 }
                 break;
-
-            case 2: // Estado de Constante Inteira (após o primeiro dígito)
+            // Estado de Constante Inteira (após o primeiro dígito)
+            // No AFD é o Q11 - Q12
+            case 2: 
                 c = fgetc(fd); // Lê o próximo caractere
-                if (is_digit(c)) {
-                    if (tamDI < TAM_NUM - 1) digitos_int[tamDI++] = (char)c;
-                    else error("Constante inteira muito longa.");
-                    // Permanece no estado 2
-                } else if (c == '.') { // Pode ser o início de uma constante real
-                    estado = 3;
-                    digitos_int[tamDI] = '\0'; // Finaliza a parte inteira
-                } else { // Fim da Constante Inteira
-                    ungetc(c, fd);
-                    digitos_int[tamDI] = '\0';
-                    t.cat = CT_INT;
-                    t.valInt = atoi(digitos_int);
-                    estado = 0;
-                    return t;
+                //Se o próximo caractere for dígito
+                if (is_digit(c)) 
+                {
+                    //Se não estourar o buffer
+                    if (tamanho_digito < TAM_NUM - 1)   
+                    {
+                        digitos_int[tamanho_digito] = (char)c;
+                        tamanho_digito++;
+
+                    }
+                    else 
+                    {
+                        error("Constante inteira muito longa.");
+                    }
+                    
+                    // Permanece no estado 2 
+                    // Não há troca de estados, pois iremos ler todos os dígitos
+                }
+                //Se o caractere for um '.' é o começo de uma constante real, vamos ter que trocar de estado
+                else if (c == '.') 
+                { 
+                    estado = 3; //Vai para o estado de CT_REAL
+                    digitos_int[tamanho_digito] = '\0'; // Finaliza a parte inteira
+                } 
+                else 
+                { 
+                    // Fim da Constante Inteira
+                    ungetc(c, fd); //Devolvo o dígito que não faz mais parte da CT_INT para que ele possa ser lido na próxima iteração
+                    digitos_int[tamanho_digito] = '\0'; //Finalizo os digitos
+
+                    t.cat = CT_INT; 
+                    t.valInt = atoi(digitos_int); //Converto o valor para valor inteiro
+                    return t; //retorno o token
                 }
                 break;
-
-            case 3: // Estado de Constante Real - após o ponto
+            // Estado de Constante Real - após o ponto '.'
+            // No AFD é o Q13 
+            case 3: 
                 c = fgetc(fd); // Lê o próximo caractere
-                if (c == EOF) { // Se EOF após '.', é um erro
+                // Se EOF após '.', é um erro
+                if (c == EOF) 
+                { 
                     error("Constante real mal formada: EOF apos o ponto.");
-                } else if (is_digit(c)) {
-                    estado = 4;
-                    if (tamDR < TAM_NUM - 1) digitos_real[tamDR++] = (char)c;
-                    else error("Parte decimal da constante real excede o tamanho maximo.");
-                } else { // Erro: Ponto sem dígitos decimais
+                }
+                //Se for dígito 
+                else if (is_digit(c)) 
+                {
+                    estado = 4; // Vai para o estado de Constante Real - dígitos após o ponto
+                    if (tamanho_digito_real < TAM_NUM - 1) 
+                    {
+                        digitos_real[tamanho_digito_real] = (char)c;
+                        tamanho_digito_real++;
+                    }
+                    else 
+                    {
+                        error("Parte decimal da constante real excede o tamanho maximo.");
+                    }
+                } 
+                //Se o caractere depois do ponto não for dígito
+                else 
+                { 
                     error("Constante real mal formada: esperado digito apos o ponto.");
                 }
                 break;
-
-            case 4: // Estado de Constante Real - dígitos após o ponto
+            // Estado de Constante Real - dígitos após o ponto
+            // No AFD é o Q14
+            case 4: 
                 c = fgetc(fd); // Lê o próximo caractere
-                if (is_digit(c)) {
-                    if (tamDR < TAM_NUM - 1) digitos_real[tamDR++] = (char)c;
-                    else error("Parte decimal da constante real excede o tamanho maximo.");
-                    // Permanece no estado 4
-                } else { // Fim da Constante Real
-                    ungetc(c, fd);
-                    digitos_real[tamDR] = '\0';
-                    char num_completo[TAM_NUM * 2 + 2]; // Tamanho suficiente para int.real e '.' e '\0'
-                    sprintf(num_completo, "%s.%s", digitos_int, digitos_real);
+                //Se 'c' for dígito
+                if (is_digit(c)) 
+                {
+                    if (tamanho_digito_real < TAM_NUM - 1)
+                    {
+                        digitos_real[tamanho_digito_real++] = (char)c;
+                    }
+                    else
+                    {
+                        error("Parte decimal da constante real excede o tamanho maximo.");
+                    }
+                    // Permanece no estado 4 até que todos os dígitos sejam lidos (ou seja, até que um caractere diferente
+                    //de dígito seja lido)
+                } 
+                else 
+                {   
+                    // Fim da Constante Real
+                    ungetc(c, fd); //Devolve o caractere não dígito para ser lido na próxima iteração
+                    digitos_real[tamanho_digito_real] = '\0'; //Finaliza o lexema dos dígitos reais
+
+                    char num_completo[TAM_NUM * 2 + 2]; //Aumentando tamanho do número real completo, apenas por via das dúvidas (simular um float)
+                    // Tamanho suficiente para int.real e '.' e '\0'
+                    sprintf(num_completo, "%s.%s", digitos_int, digitos_real); //Concatenando todo o digito real: dígito para inteira + '.' + dígitos parte decimal
+                    
                     t.cat = CT_REAL;
-                    t.valReal = atof(num_completo);
-                    estado = 0;
+                    t.valReal = atof(num_completo); //Convertendo para float
+
+                    return t; //retorno o token
+                }
+                break;
+            // Estado de atribuição ou comparação (Após '=')
+            // No AFD é o Q35 - Q37
+            case 8:
+                c = fgetc(fd); // Lê o próximo caractere
+                //Se vier outra igualdade, é classificado como comparação e retorno o token de comparação
+                if (c == '=') 
+                { 
+                    t.cat = SN;
+                    t.codigo = SN_COMPARACAO; 
+                    return t; 
+                }
+                //Atribuição
+                else 
+                { 
+                    ungetc(c, fd); //Se o próximo caractere não for '=', então é uma atribuição. Devolvo o próximo caractere para próxima iteração.
+                    t.cat = SN;
+                    t.codigo = SN_ATRIBUICAO;
+                    return t; 
+                } 
+                break;
+            // Estado de negação ou diferença (Após '!')
+            // No AFD é o Q46 - Q48
+            case 9: 
+                c = fgetc(fd); // Lê o próximo caractere
+                //Se o próximo caractere for EOF, está incompleto, logo aponta erro
+                if (c == EOF) 
+                { 
+                    error("Caracter invalido: '!' deve ser seguido por '=' (EOF atingido)."); 
+                }
+                //Se vier o '=', então é diferença
+                else if (c == '=') 
+                { 
+                    t.cat = SN; 
+                    t.codigo = SN_DIFERENTE; 
+                    return t; 
+                }
+                //Se vier qualquer outro *, é negação.
+                else
+                { 
+                    ungetc(c, fd); //Retorno o próximo caractere
+                    t.cat = SN;
+                    t.codigo = SN_NEGACAO;
                     return t;
                 }
                 break;
-
-            case 8: // Após '=' (potencial '==' ou '=')
+            // Estado menor que ou menor igual (Após '<')
+            // No AFD é o Q34 - Q33
+            case 10: 
                 c = fgetc(fd); // Lê o próximo caractere
-                if (c == EOF) { ungetc(c, fd); t.cat = SN; t.codigo = OP_ATRIBUICAO; return t; } // Atribuição se EOF
-                else if (c == '=') { t.cat = SN; t.codigo = OP_IGUAL; return t; } // COMPARAÇÃO (==)
-                else { ungetc(c, fd); t.cat = SN; t.codigo = OP_ATRIBUICAO; return t; } // ATRIBUIÇÃO (=)
-                break;
-
-            case 9: // Após '!' (potencial '!=')
-                c = fgetc(fd); // Lê o próximo caractere
-                if (c == EOF) { error("Caracter invalido: '!' deve ser seguido por '=' (EOF atingido)."); }
-                else if (c == '=') { t.cat = SN; t.codigo = OP_DIFERENTE; return t; }
-                else { error("Caracter invalido: '!' deve ser seguido por '='."); }
-                break;
-
-            case 10: // Após '<' (potencial '<=' ou '<')
-                c = fgetc(fd); // Lê o próximo caractere
-                if (c == EOF) { ungetc(c, fd); t.cat = SN; t.codigo = OP_MENOR; return t; }
-                else if (c == '=') { t.cat = SN; t.codigo = OP_MENOR_IGUAL; return t; }
-                else { ungetc(c, fd); t.cat = SN; t.codigo = OP_MENOR; return t; }
-                break;
-
-            case 11: // Após '>' (potencial '>=' ou '>')
-                c = fgetc(fd); // Lê o próximo caractere
-                if (c == EOF) { ungetc(c, fd); t.cat = SN; t.codigo = OP_MAIOR; return t; }
-                else if (c == '=') { t.cat = SN; t.codigo = OP_MAIOR_IGUAL; return t; }
-                else { ungetc(c, fd); t.cat = SN; t.codigo = OP_MAIOR; return t; }
-                break;
-
-            case 12: // Início de Charcon (após o primeiro '\'')
-                c = fgetc(fd); // Lê o caractere do charcon
-                if (c == EOF) { error("Constante de caractere nao fechada (EOF atingido)."); }
-                else if (c == '\\') { // É um caractere de escape
-                    estado = 16;
-                } else if (c == '\'') { // Aspa simples vazia, não é um char válido (e.g. '')
-                    error("Constante de caractere vazia ou mal formada.");
-                } else if (c == '\n') { // Quebra de linha não escapada em Charcon
-                    error("Constante de caractere contem quebra de linha nao escapada.");
+                //Se o próximo caractere for '=', então é menor igual (<=)
+                if (c == '=') 
+                { 
+                    t.cat = SN;
+                    t.codigo = SN_MENOR_IGUAL; 
+                    return t; 
                 }
-                else if (is_printable_ascii(c)) { // Caractere imprimível comum
-                    if (tamL < TAM_MAX_LEXEMA - 1) lexema[tamL++] = (char)c;
-                    else error("Constante de caractere excede o tamanho maximo.");
-                    estado = 17; // Espera a aspa de fechamento
-                } else {
-                    char msg_err[100]; // Tamanho aumentado para evitar overflow
+                //Se for qualquer outro *, é menor que (<)
+                else 
+                { 
+                    ungetc(c, fd); //Devolvo o caractere para a próxima iteração
+                    t.cat = SN; 
+                    t.codigo = SN_MENOR; 
+                    return t; 
+                }
+                break;
+            // Estado maior que ou maior igual (Após '>')
+            // No AFD é o Q29 - Q32
+            case 11: 
+                c = fgetc(fd); // Lê o próximo caractere
+                //Se o próximo caractere for '=', então é maior ou igual (>=)
+                if (c == '=') 
+                { 
+                    t.cat = SN; 
+                    t.codigo = SN_MAIOR_IGUAL; 
+                    return t; 
+                }
+                //Se for qualquer outro *, é maior que ()>)
+                else 
+                { 
+                    ungetc(c, fd); //Devolvo o caractere para o stream novamente
+                    t.cat = SN; 
+                    t.codigo = SN_MAIOR; 
+                    return t; 
+                }
+                break;
+            // Início Charcon (Após o primeiro apóstrofo ('))
+            // No AFD é Q2 - 15
+            case 12: 
+                c = fgetc(fd); // Lê o caractere do charcon
+                //Se o próximo caractere for um EOF, quer dizer que há um erro
+                if (c == EOF) 
+                { 
+                    error("Constante de caractere nao fechada (EOF atingido)."); 
+                }
+                //Tratanto barra invertida
+                //Se for barra invertida, vamos para outro estado tratar isso lá
+                else if (c == '\\') //Psiu!! Para não esquecer: '\\' em c simboliza uma única barra invertida.
+                { 
+                    estado = 16; //Vai para o estado de tratamento de escape
+                }
+                /* 
+                    SEGUNDO A ESPECIFICAÇÃO DA LINGUAGEM:
+                    -charcon (constante de caractere): É definido como 'ch', onde ch denota qualquer caractere imprimível da tabela ASCII, 
+                    diferente de \ (barra invertida) e ' (apóstrofo).
+                    Ou seja, não permite aspas simples vazias (Mas permite strings vazias, como descrito também na especificação)
+
+                    -stringcon (constante de string): É definido como "{ch}" onde ch denota qualquer caractere imprimível da tabela ASCII, diferente 
+                    de " (aspas) e do caractere newline.
+                    As chaves {a} na notação BNF estendida significam "repetição zero ou mais vezes". Portanto, {ch} significa que pode haver zero ou 
+                    mais caracteres ch dentro das aspas duplas.
+                    Isso implica que "" (string vazia) é permitido, pois é a ocorrência de zero caracteres ch.
+                */
+                else if (c == '\'') 
+                { 
+                    error("Aspas simples vazias não são permitidas.");
+                } 
+                //else if (c == '\n') 
+                //{ 
+                //   error("Constante de caractere contem quebra de linha nao escapada.");
+                //   contLinha++; //incremento, pois o \n foi lido
+                //}
+                //Se for um caractere imprimível da tabela ascii
+                else if (is_printable_ascii(c)) 
+                { 
+                    if (tamanho_lexema < TAM_MAX_LEXEMA - 1)
+                    {
+                        lexema[tamanho_lexema] = (char)c;
+                        tamanho_lexema++;
+                    } 
+                    else 
+                    {
+                        error("Constante de caractere excede o tamanho maximo.");
+                    }
+                    estado = 17; // Estado de verificação de fechamento de apóstrofo
+                } 
+                else 
+                {
+                    char msg_err[100]; 
                     sprintf(msg_err, "Caracter '%c' invalido em constante de caractere.", c);
                     error(msg_err);
                 }
                 break;
-
-            case 16: // Após '\' em Charcon (tratando caractere escapado)
-                c = fgetc(fd); // Lê o caractere escapado
-                if (c == EOF) { error("Constante de caractere nao fechada: EOF apos escape."); } // EOF aqui também é erro
-                else if (c == 'n') { if (tamL < TAM_MAX_LEXEMA - 1) lexema[tamL++] = '\n'; estado = 17; }
-                else if (c == 't') { if (tamL < TAM_MAX_LEXEMA - 1) lexema[tamL++] = '\t'; estado = 17; }
-                else if (c == '\\') { if (tamL < TAM_MAX_LEXEMA - 1) lexema[tamL++] = '\\'; estado = 17; }
-                else if (c == '\'') { if (tamL < TAM_MAX_LEXEMA - 1) lexema[tamL++] = '\''; estado = 17; }
-                else if (c == '0') { if (tamL < TAM_MAX_LEXEMA - 1) lexema[tamL++] = '\0'; estado = 17; }
-                else {
-                    char msg_err[100]; // Tamanho aumentado
-                    sprintf(msg_err, "Sequencia de escape '\\%c' invalida.", c);
-                    error(msg_err);
-                }
-                break;
-
-            case 17: // Após o caractere do Charcon, esperando '
-                c = fgetc(fd); // Lê o caractere de fechamento
-                if (c == EOF) { error("Constante de caractere nao fechada (EOF atingido)."); }
-                else if (c == '\'') {
-                    lexema[tamL] = '\0';
-                    t.cat = CT_CHAR;
-                    strcpy(t.lexema, lexema);
-                    estado = 0; // Volta ao estado inicial
-                    return t;
-                } else {
-                    char msg_err[100]; // Tamanho aumentado
-                    sprintf(msg_err, "Constante de caractere mal formada: esperado ''' mas leu '%c'.", c);
-                    error(msg_err);
-                }
-                break;
-
-            case 13: // Início de Stringcon (após o primeiro '"')
+            // Início estado de Stringcon (após primeiras aspas duplas '"')
+            // No AFD são os estados Q15 - Q16
+            case 13: 
                 c = fgetc(fd); // Lê o caractere da string
-                if (c == EOF) { error("Constante de string nao fechada (EOF atingido)."); }
-                else if (c == '"') { // Fim da string
-                    lexema[tamL] = '\0';
+                //Se for EOF, aponta erro
+                if (c == EOF) 
+                { 
+                    error("Constante de string nao fechada (EOF atingido).");
+                }
+                //Se o próximo caractere for outra aspas, a stringcon acabou aqui
+                /* 
+                    -stringcon (constante de string): É definido como "{ch}" onde ch denota qualquer caractere imprimível da tabela ASCII, diferente 
+                    de " (aspas) e do caractere newline.
+                    As chaves {a} na notação BNF estendida significam "repetição zero ou mais vezes". Portanto, {ch} significa que pode haver zero ou 
+                    mais caracteres ch dentro das aspas duplas.
+                    Isso implica que "" (string vazia) é permitido, pois é a ocorrência de zero caracteres ch.
+                 */
+                else if (c == '"') 
+                { 
+                    // Fim da string
+                    lexema[tamanho_lexema] = '\0'; //Finalizo o lexema
                     t.cat = CT_STRING;
                     strcpy(t.lexema, lexema);
-                    estado = 0; // Volta ao estado inicial
                     return t;
-                } else if (c == '\\') { // Caractere de escape
-                    estado = 18;
+                } 
+                /* STRING E CHAR ME FODERAMMMMMMMMMMMMMMMMMMMM que porra 
+                Depois vamos ver se realmente é necessário isso ai
+                */
+                /* 
+                Conforme especificação... 
+                stringcon ::=  "{ch}",  onde ch denota qualquer caractere imprimível da tabela ASCII, 
+                como especificado pela função isprint() do C, diferente de  " (aspas) e do 
+                caractere newline.
+               
+                Ou seja, " e \n devem ser tratadas de forma diferente
+                */
+                //Se houver uma barra invertida, vamos ter que tratar escapes para \n e para \" 
+                else if (c == '\\') 
+                { 
+                    // Caractere de escape
+                    estado = 18; //Estado para tratativa de caractere de escape
                 } else if (c == '\n') { // Quebra de linha não escapada em Stringcon
                     error("Constante de string contem quebra de linha nao escapada.");
                 }
                 else if (is_printable_ascii(c) || c == '\r') { // Caractere normal ou retorno de carro
-                    if (tamL < TAM_MAX_LEXEMA - 1) lexema[tamL++] = (char)c;
+                    if (tamanho_lexema < TAM_MAX_LEXEMA - 1) lexema[tamanho_lexema++] = (char)c;
                     else error("Constante de string excede o tamanho maximo.");
                 } else {
                     char msg_err[100]; // Tamanho aumentado
@@ -326,67 +667,223 @@ TOKEN AnaLex(FILE *fd) {
                     error(msg_err);
                 }
                 break;
-
-            case 18: // Após '\' em Stringcon (tratando caractere escapado)
+            //Início de uma divisão ou possível comentário (Após "/")
+            //No AFD são os estados Q42-Q45
+            case 15: 
+                c = fgetc(fd); // Lê o próximo caractere
+                //Se for um asterístico, quer dizer que é início de comentário
+                if (c == '*') 
+                { 
+                    estado = 19; //Vamos para o estado que trata o comentário
+                } 
+                //Se for qualquer outro * é divisão
+                else 
+                { 
+                    ungetc(c, fd); //Devolvo o caractere para a próxima iteração 
+                    t.cat = SN; 
+                    t.codigo = SN_DIVISAO; 
+                    return t; 
+                }
+                break;
+            // Estado após barra invertida ('\') do charcon - tratativa de escapes 
+            // No AFD são os estados Q6 - Q10
+            case 16: 
                 c = fgetc(fd); // Lê o caractere escapado
-                if (c == EOF) { error("Constante de string nao fechada: EOF apos escape."); } // EOF aqui também é erro
-                else if (c == 'n') { if (tamL < TAM_MAX_LEXEMA - 1) lexema[tamL++] = '\n'; estado = 13; }
-                else if (c == 't') { if (tamL < TAM_MAX_LEXEMA - 1) lexema[tamL++] = '\t'; estado = 13; }
-                else if (c == '\\') { if (tamL < TAM_MAX_LEXEMA - 1) lexema[tamL++] = '\\'; estado = 13; }
-                else if (c == '"') { if (tamL < TAM_MAX_LEXEMA - 1) lexema[tamL++] = '\"'; estado = 13; }
-                else {
-                    char msg_err[100]; // Tamanho aumentado
+                //Se o próximo caractere for um EOF, aponto um erro
+                if (c == EOF) 
+                { 
+                    error("Constante de caractere nao fechada: EOF apos escape. \\0 ou \\n"); 
+                } 
+                //Se o próximo caractere for um n, vai ser \n
+                else if (c == 'n') 
+                { 
+                    //Se não estourar o buffer
+                    if (tamanho_lexema < TAM_MAX_LEXEMA - 1) 
+                    {
+                        lexema[tamanho_lexema] = '\n'; //Adicione o \n no lexema
+                        tamanho_lexema++; //Incrementa o contador
+                        estado = 17; //Vai pro estado de verificação: se há um apóstrofo no final
+                    }
+
+                }
+                //Se o próximo caractere for um 0, vai ser \0
+                else if (c == '0') 
+                { 
+                    //Se não estourar o buffer
+                    if (tamanho_lexema < TAM_MAX_LEXEMA - 1)
+                    {
+                        lexema[tamanho_lexema] = '\0'; //Adicione o \0 no lexema
+                        tamanho_lexema++; //Incrementa o contadr
+                        estado = 17; //Vai pro estado de verificaçaõ: se há um apóstrofo no final
+                    }
+                }
+                //Se for qualquer outro *, eu aponto um erro. Pois só existem dois escapes \n e \0
+                else 
+                {
+                    char msg_err[100]; 
+                    sprintf(msg_err, "Sequencia de escape '\\%c' invalida.", c);
+                    error(msg_err);
+                }
+                break;
+            // Estado de fechamento de apóstrofo: foca em verificar se o charcon está fechado corretamente
+            //Após o caractere ou escape, esperando a última aspa simples/apóstrofo
+            case 17: 
+                c = fgetc(fd); // Lê o caractere de fechamento
+                //Se o próximo caractere for EOF, há um erro.
+                if (c == EOF) 
+                { 
+                    error("Constante de caractere nao fechada (EOF atingido)."); 
+                }
+                //Se houver o apóstrofo de fechamento corretamente
+                else if (c == '\'') 
+                {
+                    lexema[tamanho_lexema] = '\0'; // Finaliza o lexema
+
+                    // Decide a categoria com base no *conteúdo* de lexema
+                    //Se houver apenas um caractere dentro do lexema \0 ou \n
+                    if (tamanho_lexema == 1) 
+                    { 
+                        //Se for \n
+                        if (lexema[0] == '\n')
+                        {
+                            t.cat = CT_BN;
+                        }
+                        //Se for \0 
+                        else if (lexema[0] == '\0') {
+                            t.cat = CT_BZ;
+                        } else {
+                            t.cat = CT_CHAR;
+                        }
+                    } 
+                    //Se houver mais de um caractere dentro do lexema
+                    else 
+                    {
+                        error("Constante de caractere mal formada: mais de um caractere interno.");
+                    }
+                    strcpy(t.lexema, lexema); // Copia o caractere (ou '\n' ou '\0') para o lexema do token
+                    return t;
+                }
+                //Se não houver apóstrofo, aponto um ero
+                else 
+                {
+                    char msg_err[100]; 
+                    sprintf(msg_err, "Constante de caractere mal formada: esperado 'c'.");
+                    error(msg_err);
+                }
+                break;
+            // Estado para tratativas de escapes do Stringcon (Após '\')
+            // Os dois escapes são \n e \"
+            case 18: 
+                c = fgetc(fd); // Lê o próximo caractere 
+                //Se o caractere é EOF, aponta erro
+                if (c == EOF) 
+                { 
+                    error("Constante de string nao fechada: EOF apos escape.");
+                } 
+                //Se vier um n depois
+                else if (c == 'n') 
+                { 
+                    if (tamanho_lexema < TAM_MAX_LEXEMA - 1)
+                    {
+                        lexema[tamanho_lexema] = '\n';
+                        tamanho_lexema++;
+                        estado = 13; //Volto pro estado de stringcon
+                    }  
+                }
+                //Se vier uma aspas
+                else if (c == '"') 
+                { 
+                    if (tamanho_lexema < TAM_MAX_LEXEMA - 1)
+                    {
+                        lexema[tamanho_lexema] = '\"'; 
+                        tamanho_lexema++;
+                        estado = 13; //Volto pro estado de stringcon
+                    }  
+                }
+                //Se for qualquer outro caractere, aplicamos erros, pois não há nada na especificação que diga se devo aceitar outros escapes
+                else 
+                {
+                    char msg_err[100]; 
                     sprintf(msg_err, "Sequencia de escape '\\%c' invalida em string.", c);
                     error(msg_err);
                 }
                 break;
-
-            case 15: // Após '/' (potencial divisão ou início de comentário)
-                c = fgetc(fd); // Lê o próximo caractere
-                if (c == EOF) { ungetc(c, fd); t.cat = SN; t.codigo = OP_DIVISAO; return t; } // Divisão se EOF
-                else if (c == '*') { estado = 19; } // Início de comentário /*
-                else { ungetc(c, fd); t.cat = SN; t.codigo = OP_DIVISAO; return t; } // Não é comentário, é operador de divisão
-                break;
-
-            case 19: // Dentro de comentário /*
+            //Estado para tratar comentários
+            //Após asterístico
+            case 19: 
+                // Dentro de comentário /*
                 c = fgetc(fd); // Lê o caractere dentro do comentário
-                if (c == EOF) { // Se atingir EOF enquanto dentro do comentário
+                //Se for EOF, aponta erro
+                if (c == EOF) 
+                { 
                     error("Comentario nao fechado (EOF atingido).");
-                } else if (c == '*') { // Potencial fim de comentário
-                    estado = 20;
-                } else {
-                    if (c == '\n') contLinha++; // Incrementa linha dentro do comentário
+                }
+                //Se for outro asterístico, vamos pro estados para tratar o fechamento do comentário 
+                else if (c == '*') 
+                { 
+                    estado = 20; //Estado para tratar o fechamento do comentário
+                }
+                //Se for qualquer outra coisa, permanece no mesmo estado, isto é, dentro do comentário
+                //Só devemos consumir qualquer caractere, depois que o comentário for fechado. 
+                //Portanto, devemos ficar atentos apenas para asterístico para irmos para o próximo estado 
+                else 
+                {
+                    if (c == '\n')
+                    {
+                        contLinha++; //Incrementa linha, apenas para termos uma depuração precisa
+                    }
                     // Permanece no estado 19
                 }
                 break;
-
-            case 20: // Após '*' dentro de comentário, esperando '/'
+            //Estado para tratar o fechamento do asterístico 
+            //Estamos dentro do comentário e encontramos um asterístico (possívelmente o que antecede o fechamento do comentário)
+            case 20: 
                 c = fgetc(fd); // Lê o caractere de fechamento do comentário
-                if (c == EOF) { // Se atingir EOF aqui
+                //Se for EOF, aponto erro
+                if (c == EOF) 
+                { 
                     error("Comentario nao fechado (EOF atingido).");
-                } else if (c == '/') { // Fim de comentário */
+                }
+                //Se for uma barra, finalizamos o comentário 
+                else if (c == '/') 
+                { 
+                    // Fim de comentário */
                     estado = 0; // Comentário fechado, volta ao estado inicial para buscar o próximo token
-                    // Não retorna token, o loop `while(true)` no `AnaLex` continua do `case 0`.
-                } else { // Não era o fim do comentário ("**texto**")
+                    // Não retorna token, o loop no `Analex continua do `case 0`.
+                }
+                //Se for outro caractere, eu volto pro estado 19 para tratativa 
+                else 
+                {    
                     ungetc(c, fd); // Devolve o caractere para ser reavaliado no estado 19
                     estado = 19; // Volta para o estado 19 (ainda dentro do comentário)
                 }
                 break;
-
-            case 21: // Após '&' (potencial '&&')
+            //Início para operador and (Após '&' (potencial '&&'))
+            case 21: 
                 c = fgetc(fd); // Lê o próximo caractere
-                if (c == '&') {
-                    t.cat = SN; t.codigo = OP_AND; return t;
-                } else {
+                //Se for outro &, então encontramos o and
+                if (c == '&') 
+                {
+                    t.cat = SN; 
+                    t.codigo = SN_AND; 
+                    return t;
+                }
+                //Se for qualquer outro caractere, aponta erro 
+                else 
+                {
                     error("Caracter invalido: '&' deve ser seguido por '&'.");
                 }
                 break;
-
-            case 22: // Após '|' (potencial '||')
+            //Início para operador OR ( Após '|' (potencial '||'))
+            case 22: 
                 c = fgetc(fd); // Lê o próximo caractere
-                if (c == '|') {
-                    t.cat = SN; t.codigo = OP_OR; return t;
-                } else {
+                //Se for outro |, encontramos nosso OR
+                if (c == '|') 
+                {
+                    t.cat = SN; t.codigo = SN_OR; return t;
+                }
+                //Se for qualquer outro caracter, apontamos erro 
+                else {
                     error("Caracter invalido: '|' deve ser seguido por '|'.");
                 }
                 break;
@@ -394,108 +891,3 @@ TOKEN AnaLex(FILE *fd) {
     }
 }
 
-int main() {
-    FILE *fd;
-    TOKEN tk;
-    // last_token_line_printed armazena a última linha cujo prefixo "LINHA X:" foi impresso.
-    // Inicializa com 0 para garantir que a primeira linha seja impressa.
-    int last_token_line_printed = 0;
-
-    if ((fd = fopen("programa_cshort.txt", "r")) == NULL) {
-        // Se o arquivo não puder ser aberto, a função error() em analex.c será chamada e o programa encerrado.
-        error("Arquivo de entrada do programa nao encontrado! Crie 'programa_cshort.txt'");
-    }
-
-    printf("Iniciando analise lexica (modo rigido)...\n");
-    printf("-------------------------------------------\n");
-
-    while (true) {
-        tk = AnaLex(fd);
-
-        // Lógica de impressão do prefixo da linha:
-        // Imprime "LINHA X: " apenas quando a linha atual (contLinha) é diferente
-        // da última linha para a qual o prefixo foi impresso.
-        if (contLinha != last_token_line_printed) {
-            // Se não é a primeira linha a ser impressa e a anterior não terminou com FIM_EXPR (que já imprime \n)
-            // Ou se a última linha impressa foi 0 (significa que é a primeira linha a ser impressa)
-            if (last_token_line_printed != 0) {
-                 printf("\n"); // Adiciona uma nova linha antes de imprimir um novo prefixo
-            }
-            printf("LINHA %d: ", contLinha);
-            last_token_line_printed = contLinha;
-        }
-
-        switch (tk.cat) {
-            case ID:
-                printf("<ID, %s> ", tk.lexema);
-                break;
-            case SN:
-                switch (tk.codigo) {
-                    case OP_SOMA: printf("<SN, OP_SOMA> "); break;
-                    case OP_SUBTRACAO: printf("<SN, OP_SUBTRACAO> "); break;
-                    case OP_MULTIPLICACAO: printf("<SN, OP_MULTIPLICACAO> "); break;
-                    case OP_DIVISAO: printf("<SN, OP_DIVISAO> "); break;
-                    case OP_ATRIBUICAO: printf("<SN, OP_ATRIBUICAO> "); break;
-                    case OP_MAIOR: printf("<SN, OP_MAIOR> "); break;
-                    case OP_MENOR: printf("<SN, OP_MENOR> "); break;
-                    case OP_MAIOR_IGUAL: printf("<SN, OP_MAIOR_IGUAL> "); break;
-                    case OP_MENOR_IGUAL: printf("<SN, OP_MENOR_IGUAL> "); break;
-                    case OP_IGUAL: printf("<SN, OP_IGUAL> "); break;
-                    case OP_DIFERENTE: printf("<SN, OP_DIFERENTE> "); break;
-                    case OP_AND: printf("<SN, OP_AND> "); break; 
-                    case OP_OR: printf("<SN, OP_OR> "); break;   
-                    case ABRE_PARENTESES: printf("<SN, ABRE_PARENTESES> "); break;
-                    case FECHA_PARENTESES: printf("<SN, FECHA_PARENTESES> "); break;
-                    case VIRGULA: printf("<SN, VIRGULA> "); break;
-                    case ABRE_COLCHETES: printf("<SN, ABRE_COLCHETES> "); break;
-                    case FECHA_COLCHETES: printf("<SN, FECHA_COLCHETES> "); break;
-                    case ABRE_CHAVES: printf("<SN, ABRE_CHAVES> "); break;
-                    case FECHA_CHAVES: printf("<SN, FECHA_CHAVES> "); break;
-                }
-                break;
-            case CT_INT:
-                printf("<CT_INT, %d> ", tk.valInt);
-                break;
-            case CT_REAL:
-                printf("<CT_REAL, %lf> ", tk.valReal);
-                break;
-            case CT_CHAR:
-                printf("<CT_CHAR, '%s'> ", tk.lexema);
-                break;
-            case CT_STRING:
-                printf("<CT_STRING, \"%s\"> ", tk.lexema);
-                break;
-            case PALAVRA_RESERVADA: 
-                switch (tk.codigo) {
-                    case PR_IF: printf("<PR, if> "); break;
-                    case PR_ELSE: printf("<PR, else> "); break;
-                    case PR_WHILE: printf("<PR, while> "); break;
-                    case PR_FOR: printf("<PR, for> "); break;
-                    case PR_RETURN: printf("<PR, return> "); break;
-                    case PR_INT: printf("<PR, int> "); break;
-                    case PR_FLOAT: printf("<PR, float> "); break;
-                    case PR_CHAR: printf("<PR, char> "); break;
-                    case PR_STRING: printf("<PR, string> "); break;
-                    case PR_BREAK: printf("<PR, break> "); break;
-                    case PR_CONTINUE: printf("<PR, continue> "); break;
-                    
-                }
-                break;
-
-            case FIM_EXPR: // É o ';'
-                printf("<FIM_EXPR, ;>\n"); // Sempre termina com nova linha e o ';'
-                break;
-            case FIM_ARQ:
-                printf("<FIM_ARQ>\n");
-                break;
-            default:
-                break;
-        }
-        if (tk.cat == FIM_ARQ) break; // Sai do loop principal se o token FIM_ARQ for encontrado
-    }
-
-    printf("-------------------------------------------\n");
-    printf("Analise lexica concluida.\n");
-    fclose(fd);
-    return 0;
-}
