@@ -7,10 +7,6 @@
 /* char 'a; --> falta ' no final */
 /* stringcon a = "a; --> falta " no final */
 /* '\x'; --> escape que não existe
-/*ERROS (BUGS) --> /n, comentários abertos são aceitos, /0*/ 
-
-idade == 30;
-
 /* 
 
 '\n'
@@ -18,7 +14,9 @@ idade == 30;
 ""
 /*asdasdas
 
-
+aaaaaaa
+palavra_reservada 
+1a
 
 !a;
  preco_unitario = 99.99;
@@ -34,4 +32,28 @@ if (idade > 20 && preco_unitario < 100.0) {
     }
 } 
 
+*/
+palavra_reservada
+1a
+a_1
+do
+while
+bool
+void
+float
+real 
+realcon
+int 
+intcon
+string 
+stringcon
+,,,,,, ;;;;;
+!aaaaaaaa != !=========
 
+"stringcon teste porra "
+'C'
+
+'\n'
+'\0'
+
+idade == 30;

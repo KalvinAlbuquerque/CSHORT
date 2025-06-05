@@ -4,14 +4,9 @@ int main()
 {
     FILE *fd;
     TOKEN tk;
-
-    // Inicializa com 0 para garantir que a primeira linha seja impressa.
     int linha_do_ultimo_token_impresso = 0;
-
-    //Carregando arquivo cshort
     if ((fd = fopen("programa_cshort.txt", "r")) == NULL) 
     {
-        // Se o arquivo não puder ser aberto, a função error() em analex.c será chamada e o programa encerrado.
         error("Arquivo de entrada do programa nao encontrado! Crie 'programa_cshort.txt'");
     }
 
@@ -22,8 +17,6 @@ int main()
     {
         tk = Analex(fd);
 
-        // Lógica de impressão do prefixo da linha:
-        // Imprime "LINHA X: " apenas quando a linha atual (contLinha) é diferente da última linha para a qual o prefixo foi impresso.
         if (contLinha != linha_do_ultimo_token_impresso) 
         {
             printf("\nLINHA %d: ", contLinha);
@@ -94,6 +87,11 @@ int main()
                     case PR_BREAK: printf("<PR, break> "); break;
                     case PR_CONTINUE: printf("<PR, continue> "); break;
                     case PR_VOID: printf("<PR, void> "); break;
+                    case PR_FLOAT: printf("<PR, float> "); break;
+                    case PR_DO: printf("<PR, do> "); break;
+                    case PR_DOUBLE: printf("<PR, double> "); break;
+                    case PR_BOOL: printf("<PR, bool> "); break;
+
                 }
                 break;
             case FIM_ARQ:

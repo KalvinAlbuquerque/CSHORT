@@ -70,7 +70,11 @@ enum PALAVRAS_RESERVADAS_CODIGO
     PR_STRINGCON, 
     PR_BREAK,
     PR_CONTINUE,
-    PR_VOID
+    PR_VOID,
+    PR_BOOL,
+    PR_FLOAT,
+    PR_DOUBLE,
+    PR_DO
 };
 
 typedef struct 

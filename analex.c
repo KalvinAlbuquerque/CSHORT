@@ -78,7 +78,23 @@ int check_reserved_word(const char *lexema)
     {
         return PR_VOID;
     }
-
+    if (strcmp(lexema, "bool") == 0)
+    {
+        return PR_BOOL;
+    }
+    if (strcmp(lexema, "float") == 0)
+    {
+        return PR_FLOAT;
+    }
+    if (strcmp(lexema, "double") == 0)
+    {
+        return PR_DOUBLE;
+    }
+    if (strcmp(lexema, "do") == 0)
+    {
+        return PR_DO;
+    }
+    
     return 0; // Não é palavra reservada
 }
 
