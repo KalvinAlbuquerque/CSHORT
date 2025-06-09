@@ -94,14 +94,10 @@ int check_reserved_word(const char *lexema)
     {
         return PR_DO;
     }
-    
+
     return 0; // Não é palavra reservada
 }
 
-
-//Função AnaLex
-//Recebe um arquivo
-//Retorna um TOKEN
 TOKEN Analex(FILE *fd) 
 {
     int estado = 0; //Variável para controlar os estados do AFD
