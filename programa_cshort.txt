@@ -1,59 +1,35 @@
-/* ERROS PARA SIMULAR */
-/* @ --> Identificador inexistente */
-/* 1.1.1 --> realcon mal formado */
-/* ! --> o ! puro não quer dizer nada, precisa ser != */
-/* || e && --> não reconhece (tirar dúvida com atta) */
-/* char ab = 'aaa'; --> char com mais de um caractere */
-/* char 'a; --> falta ' no final */
-/* stringcon a = "a; --> falta " no final */
-/* '\x'; --> escape que não existe
-/* 
+intcon resultado_global;
+charcon flag_pronto;
 
-'\n'
-'\0'
-""
-/*asdasdas
-
-aaaaaaa
-palavra_reservada 
-1a
-
-!a;
- preco_unitario = 99.99;
-if (idade > 20 && preco_unitario < 100.0) {
-    int resultado = 1;
-    char letra = 'X';
-    string mensagem = "Condicao verdadeira!";
-    return resultado;
-} else if (idade < 20 || preco_unitario > 100.0) {
-    while(true) {
-        break;
-        continue;
+intcon calcular_fatorial(intcon n) {
+    if (n == 0) {
+        return 1;
+    } else {
+        return n * calcular_fatorial(n - 1);
     }
-} 
+}
 
-*/
-palavra_reservada
-1a
-a_1
-do
-while
-bool
-void
-float
-real 
-realcon
-int 
-intcon
-string 
-stringcon
-,,,,,, ;;;;;
-!aaaaaaaa != !=========
+void main() {
+    intcon valores[10];
+    intcon i;
+    intcon x;
+    float limite;
+    
+    i = 0;
+    x = 5;
+    limite = 99.5;
+    resultado_global = 0;
+    
+    while (i < 10) {
+        valores[i] = i * 2;
+        i = i + 1;
+    }
 
-"stringcon teste porra "
-'C'
-
-'\n'
-'\0'
-
-idade == 30;
+    if ( (valores[2] > 3 && x == 5) || !(limite < 100.0) ) {
+        resultado_global = calcular_fatorial(x);
+    } else {
+        resultado_global = -1;
+    }
+    
+    return;
+}

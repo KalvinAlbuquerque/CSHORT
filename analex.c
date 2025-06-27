@@ -1,11 +1,6 @@
 #include "analex.h"
 
 
-
-/******************** VARIÁVEIS GLOBAIS  ****************************************/
-//Variável para contar linhas do código Cshort
-int contLinha = 1; 
-
 void error(char msg[]) 
 {
     //fprintf(stderr, "Erro na linha %d: %s\n", contLinha, msg);
