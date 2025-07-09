@@ -7,7 +7,6 @@ void error(char msg[])
     printf("\nErro na linha %d: %s\n", contLinha, msg);
     exit(1); // Encerra o programa imediatamente em caso de erro léxico
 }
-
 bool is_letter(char c) 
 {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');

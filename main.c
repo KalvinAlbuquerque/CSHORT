@@ -2,6 +2,7 @@
 
 #include "analex.h"
 #include "anasint.h"
+#include "tabela_simbolos.h"
 
 // --- Variáveis Globais Definidas Aqui ---
 TOKEN t;
@@ -24,11 +25,6 @@ void main()
     printf("FLUXO DE TOKENS CONSUMIDOS:\n");
 
     Prog(); // Ponto de partida da análise sintática
-
-    printf("\n\n-------------------------------------------\n");
-    printf("ARVORE SINTATICA:\n\n");
-    // A árvore será impressa conforme o analisador roda.
-    // Esta mensagem pode ser removida se preferir.
 
     printf("\n-------------------------------------------\n");
     printf("Analise sintatica concluida com sucesso!\n");
