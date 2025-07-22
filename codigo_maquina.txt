@@ -1,0 +1,4 @@
+PUSH c
+PUSH 1
+PUSH 1
+MUL

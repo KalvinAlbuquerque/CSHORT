@@ -2,14 +2,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>          // Necessário para strcat e strlen
+#include <string.h>// Necessário para strcat e strlen
 #include "anasint.h"
 #include "analex.h"
 #include "tabela_simbolos.h" // Inclusão do header da tabela de símbolos
+#include "gerador_codigo.h"
 
 // --- Variáveis Globais para Tabela de Símbolos ---
 TokenInfo tokenInfo; // Estrutura para armazenar informações do token atual
-Tabela tabela;       // A tabela de símbolos
+Tabela tabela; // A tabela de símbolos
 
 // --- Protótipos de Funções ---
 void Prog();
@@ -31,20 +32,21 @@ void Expr_multiplicativa();
 void Fator();
 
 /**
- * @brief Aumenta a indentação para a impressão da árvore sintática.
- */
-void aumenta_ident() { if (strlen(TABS) < sizeof(TABS) - 3) strcat(TABS, "  "); }
+ * @brief Aumenta a indentação para a impressão da árvore sintática.
+ */
+void aumenta_ident() { if (strlen(TABS) < sizeof(TABS) - 3) strcat(TABS, " "); }
 
 /**
- * @brief Diminui a indentação para a impressão da árvore sintática.
- */
+ * @brief Diminui a indentação para a impressão da árvore sintática.
+ */
 void diminui_ident() { if (strlen(TABS) >= 2) TABS[strlen(TABS) - 2] = '\0'; }
 
 /**
- * @brief Imprime um token formatado no console para fins de depuração.
- * @param tk O token a ser impresso.
- */
-void print_folha(TOKEN tk) {
+ * @brief Imprime um token formatado no console para fins de depuração.
+ * @param tk O token a ser impresso.
+ */
+void print_folha(TOKEN tk) 
+{
     printf("%s- ", TABS);
     switch (tk.cat) {
         case ID: printf("ID: %s\n", tk.lexema); break;
@@ -59,9 +61,9 @@ void print_folha(TOKEN tk) {
 }
 
 /**
- * @brief Converte um token (categoria e código) em uma descrição textual amigável.
- * @return Uma string constante (const char*) com a descrição do token.
- */
+ * @brief Converte um token (categoria e código) em uma descrição textual amigável.
+ * @return Uma string constante (const char*) com a descrição do token.
+ */
 const char* getTokenDescription(int category, int code) {
     static char buffer[100];
     switch (category) {
@@ -118,9 +120,9 @@ const char* getTokenDescription(int category, int code) {
 }
 
 /**
- * @brief Verifica se o token atual é o esperado e avança para o próximo.
- * Se o token não for o esperado, formata e exibe um erro detalhado.
- */
+ * @brief Verifica se o token atual é o esperado e avança para o próximo.
+ * Se o token não for o esperado, formata e exibe um erro detalhado.
+ */
 void consome(int categoria_esperada, int codigo_esperado) {
     if (t.cat == categoria_esperada && (codigo_esperado == 0 || t.codigo == codigo_esperado)) {
         t = Analex(fd);
@@ -143,8 +145,8 @@ void consome(int categoria_esperada, int codigo_esperado) {
 }
 
 /**
- * @brief Verifica se o token atual é uma palavra-chave de tipo.
- */
+ * @brief Verifica se o token atual é uma palavra-chave de tipo.
+ */
 int Tipo() {
     if (t.cat == PALAVRA_RESERVADA) {
         switch (t.codigo) {
@@ -159,9 +161,9 @@ int Tipo() {
 }
 
 /**
- * @brief Ponto de entrada do analisador sintático. Analisa o programa inteiro.
- * Gramática: `prog ::= { decl ';' | func }`
- */
+ * @brief Ponto de entrada do analisador sintático. Analisa o programa inteiro.
+ * Gramática: `prog ::= { decl ';' | func }`
+ */
 void Prog() {
     printf("%s<Prog>\n", TABS); aumenta_ident();
     t = Analex(fd);
@@ -178,8 +180,8 @@ void Prog() {
 }
 
 /**
- * @brief Distingue entre uma declaração de variável e uma de função.
- */
+ * @brief Distingue entre uma declaração de variável e uma de função.
+ */
 void Decl_ou_Func() {
     printf("%s<Decl_ou_Func>\n", TABS); aumenta_ident();
     int tipo_atual = tokenInfo.tipo;
@@ -206,9 +208,9 @@ void Decl_ou_Func() {
 }
 
 /**
- * @brief Analisa o corpo e os parâmetros de uma função.
- * Gramática: `func ::= tipo id '(' tipos_param ')' '{' ... '}'`
- */
+ * @brief Analisa o corpo e os parâmetros de uma função.
+ * Gramática: `func ::= tipo id '(' tipos_param ')' '{' ... '}'`
+ */
 void Func_body(int procPos) {
     printf("%s<Func_body>\n", TABS); aumenta_ident();
     print_folha(t); consome(SN, ABRE_PARENTESES);
@@ -239,8 +241,8 @@ void Func_body(int procPos) {
 }
 
 /**
- * @brief Analisa o restante de uma linha de declaração de variáveis.
- */
+ * @brief Analisa o restante de uma linha de declaração de variáveis.
+ */
 void Decl_var_body() {
     printf("%s<Decl_var_body>\n", TABS); aumenta_ident();
     if (t.cat == SN && t.codigo == ABRE_COLCHETES) {
@@ -258,9 +260,9 @@ void Decl_var_body() {
 }
 
 /**
- * @brief Analisa uma linha de declaração de variáveis locais.
- * Gramática: `decl ::= tipo decl_var { ',' decl_var } ';'`
- */
+ * @brief Analisa uma linha de declaração de variáveis locais.
+ * Gramática: `decl ::= tipo decl_var { ',' decl_var } ';'`
+ */
 void Decl() {
     printf("%s<Decl>\n", TABS); aumenta_ident();
     if (Tipo()) {
@@ -283,9 +285,9 @@ void Decl() {
 }
 
 /**
- * @brief Analisa uma única declaração de variável (um `decl_var`).
- * Gramática: `decl_var ::= id [ '[' intcon ']' ]`
- */
+ * @brief Analisa uma única declaração de variável (um `decl_var`).
+ * Gramática: `decl_var ::= id [ '[' intcon ']' ]`
+ */
 void Decl_var() {
     printf("%s<Decl_var>\n", TABS); aumenta_ident();
     strcpy(tokenInfo.lexema, t.lexema);
@@ -301,9 +303,9 @@ void Decl_var() {
 }
 
 /**
- * @brief Analisa a lista de parâmetros na declaração de uma função.
- * Gramática: `tipos_param ::= void | tipo (id | id '['']') { ',' ... }`
- */
+ * @brief Analisa a lista de parâmetros na declaração de uma função.
+ * Gramática: `tipos_param ::= void | tipo (id | id '['']') { ',' ... }`
+ */
 void Tipos_param() {
     printf("%s<Tipos_param>\n", TABS); aumenta_ident();
     if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_VOID) {
@@ -336,28 +338,92 @@ void Tipos_param() {
 }
 
 /**
- * @brief Analisa um único comando da linguagem.
- * Gramática: `cmd ::= if... | while... | for... | return... | atrib... | ...`
- */
-void Cmd() {
+ * @brief Analisa um único comando da linguagem, aplicando as regras de tradução da MP.
+ * Gramática: `cmd ::= if... | while... | for... | return... | atrib... | ...`
+ */
+void Cmd() 
+{
     printf("%s<Cmd>\n", TABS); aumenta_ident();
+    char linha[100]; // Buffer para gerar instruções
+
     if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_IF) {
         print_folha(t); consome(PALAVRA_RESERVADA, PR_IF);
         print_folha(t); consome(SN, ABRE_PARENTESES);
-        Expr();
+
+        Expr(); // Gera código para a condição do if
+
         print_folha(t); consome(SN, FECHA_PARENTESES);
-        Cmd();
+
+        int rotulo_else = novo_rotulo();
+        int rotulo_fim = novo_rotulo();
+
+        // Se a condição for falsa (0), salta para o rótulo do else.
+        sprintf(linha, "GOFALSE L%d", rotulo_else);
+        gera(linha);
+
+        Cmd(); // Corpo do if (bloco 'then')
+
         if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_ELSE) {
+            // Se houver 'else', o bloco 'then' precisa saltar para o fim do if.
+            sprintf(linha, "GOTO L%d", rotulo_fim);
+            gera(linha);
+
+            // Gera o rótulo para o início do bloco 'else'.
+            sprintf(linha, "LABEL L%d", rotulo_else);
+            gera(linha);
+
             print_folha(t); consome(PALAVRA_RESERVADA, PR_ELSE);
-            Cmd();
+            Cmd(); // Corpo do else
+
+            // Gera o rótulo para o fim da estrutura if-else.
+            sprintf(linha, "LABEL L%d", rotulo_fim);
+            gera(linha);
+        } else {
+            // Se não houver 'else', o 'GOFALSE' salta para este rótulo.
+            sprintf(linha, "LABEL L%d", rotulo_else);
+            gera(linha);
         }
+
     } else if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_WHILE) {
         print_folha(t); consome(PALAVRA_RESERVADA, PR_WHILE);
         print_folha(t); consome(SN, ABRE_PARENTESES);
-        Expr();
+
+        int rotulo_inicio = novo_rotulo();
+        int rotulo_fim = novo_rotulo();
+
+        // Gera o rótulo para o início do loop (teste da condição).
+        sprintf(linha, "LABEL L%d", rotulo_inicio);
+        gera(linha);
+
+        Expr(); // Gera código para a condição
+
         print_folha(t); consome(SN, FECHA_PARENTESES);
-        Cmd();
+
+        // Se a condição for falsa, salta para o fim do loop.
+        sprintf(linha, "GOFALSE L%d", rotulo_fim);
+        gera(linha);
+
+        Cmd(); // Corpo do while
+
+        // Salta de volta para o início para reavaliar a condição.
+        sprintf(linha, "GOTO L%d", rotulo_inicio);
+        gera(linha);
+
+        // Gera o rótulo de fim do loop.
+        sprintf(linha, "LABEL L%d", rotulo_fim);
+        gera(linha);
+
     } else if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_FOR) {
+        // NOTA: A estrutura deste parser para o 'for' é problemática.
+        // Ele processa a parte de incremento (C) ANTES do corpo do loop (D)
+        // em um laço for(A; B; C) { D; }. A ordem de execução correta seria A, B, D, C.
+        // A ordem do parser leva a uma geração de código incorreta: A, B, C, D.
+        // Para uma implementação correta, a estrutura do parser precisaria ser
+        // modificada para adiar a geração de código da parte de incremento.
+        // O código abaixo apenas analisa a sintaxe sem gerar código funcional.
+        
+        printf("%s- AVISO: A geracao de codigo para o laco 'for' nao foi implementada devido a uma limitacao estrutural do parser.\n", TABS);
+        
         print_folha(t); consome(PALAVRA_RESERVADA, PR_FOR);
         print_folha(t); consome(SN, ABRE_PARENTESES);
         if (t.cat != SN || t.codigo != PONTO_VIRGULA) { Expr_atrib(); }
@@ -367,30 +433,38 @@ void Cmd() {
         if (t.cat != SN || t.codigo != FECHA_PARENTESES) { Expr_atrib(); }
         print_folha(t); consome(SN, FECHA_PARENTESES);
         Cmd();
+
     } else if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_RETURN) {
         print_folha(t); consome(PALAVRA_RESERVADA, PR_RETURN);
         if (t.cat != SN || t.codigo != PONTO_VIRGULA) {
-            Expr();
+            Expr(); // Gera código para a expressão de retorno (o valor fica no topo da pilha)
         }
         print_folha(t); consome(SN, PONTO_VIRGULA);
+        gera("RET"); // Gera a instrução de retorno do procedimento
+
     } else if (t.cat == SN && t.codigo == ABRE_CHAVES) {
         print_folha(t); consome(SN, ABRE_CHAVES);
         while (!(t.cat == SN && t.codigo == FECHA_CHAVES)) {
             Cmd();
         }
         print_folha(t); consome(SN, FECHA_CHAVES);
+
     } else if (t.cat == SN && t.codigo == PONTO_VIRGULA) {
+        // Comando vazio
         print_folha(t); consome(SN, PONTO_VIRGULA);
+
     } else {
+        // Comando de expressão (ex: atribuição ou chamada de função)
         Expr();
         print_folha(t); consome(SN, PONTO_VIRGULA);
     }
+
     diminui_ident(); printf("%s</Cmd>\n", TABS);
 }
 
 /**
- * @brief Ponto de entrada para a análise de qualquer expressão.
- */
+ * @brief Ponto de entrada para a análise de qualquer expressão.
+ */
 void Expr() {
     printf("%s<Expr>\n", TABS); aumenta_ident();
     Expr_atrib();
@@ -398,109 +472,168 @@ void Expr() {
 }
 
 /**
- * @brief Analisa uma expressão de atribuição.
- */
+ * @brief Analisa uma expressão de atribuição.
+ */
 void Expr_atrib() {
     printf("%s<Expr_atrib>\n", TABS); aumenta_ident();
     Expr_ou();
     if (t.cat == SN && t.codigo == SN_ATRIBUICAO) {
         print_folha(t); consome(SN, SN_ATRIBUICAO);
         Expr_atrib();
+        // A geração de código para atribuição (STOR) precisaria ser adicionada aqui
+        // e dependeria de como o endereço da variável à esquerda é tratado.
     }
     diminui_ident(); printf("%s</Expr_atrib>\n", TABS);
 }
 
 /**
- * @brief Analisa expressões com o operador OU (||).
- */
+ * @brief Analisa expressões com o operador OU (||).
+ */
 void Expr_ou() {
     printf("%s<Expr_ou>\n", TABS); aumenta_ident();
     Expr_e();
     while (t.cat == SN && t.codigo == SN_OR) {
         print_folha(t); consome(SN, SN_OR);
         Expr_e();
+        // Ação semântica para '||'
     }
     diminui_ident(); printf("%s</Expr_ou>\n", TABS);
 }
 
 /**
- * @brief Analisa expressões com o operador E (&&).
- */
+ * @brief Analisa expressões com o operador E (&&).
+ */
 void Expr_e() {
     printf("%s<Expr_e>\n", TABS); aumenta_ident();
     Expr_relacional();
     while (t.cat == SN && t.codigo == SN_AND) {
         print_folha(t); consome(SN, SN_AND);
         Expr_relacional();
+        // Ação semântica para '&&'
     }
     diminui_ident(); printf("%s</Expr_e>\n", TABS);
 }
 
 /**
- * @brief Analisa expressões com operadores relacionais (==, !=, <, >, etc.).
- */
+ * @brief Analisa expressões com operadores relacionais (==, !=, <, >, etc.).
+ */
 void Expr_relacional() {
     printf("%s<Expr_relacional>\n", TABS); aumenta_ident();
     Expr_aditiva();
     if (t.cat == SN && (t.codigo == SN_COMPARACAO || t.codigo == SN_DIFERENTE || t.codigo == SN_MAIOR || t.codigo == SN_MENOR || t.codigo == SN_MAIOR_IGUAL || t.codigo == SN_MENOR_IGUAL)) {
+        int op = t.codigo;
         print_folha(t); consome(SN, t.codigo);
         Expr_aditiva();
+        // Ação semântica para operadores relacionais (ex: SUB, seguido de teste)
     }
     diminui_ident(); printf("%s</Expr_relacional>\n", TABS);
 }
 
 /**
- * @brief Analisa expressões com operadores de adição e subtração (+, -).
- */
+ * @brief Analisa expressões com operadores de adição e subtração (+, -).
+ * Ação semântica: gera código 'ADD' ou 'SUB' após processar os dois operandos.
+ */
 void Expr_aditiva() {
     printf("%s<Expr_aditiva>\n", TABS); aumenta_ident();
-    Expr_multiplicativa();
+    Expr_multiplicativa(); 
     while (t.cat == SN && (t.codigo == SN_SOMA || t.codigo == SN_SUBTRACAO)) {
+        int op = t.codigo;
         print_folha(t); consome(SN, t.codigo);
         Expr_multiplicativa();
+
+        if (op == SN_SOMA) {
+            gera("ADD");
+        } else {
+            gera("SUB");
+        }
     }
     diminui_ident(); printf("%s</Expr_aditiva>\n", TABS);
 }
 
 /**
- * @brief Analisa expressões com operadores de multiplicação e divisão (*, /).
- */
+ * @brief Analisa expressões com operadores de multiplicação e divisão (*, /).
+ * Ação semântica: gera código 'MUL' ou 'DIV' após processar os dois operandos.
+ */
 void Expr_multiplicativa() {
     printf("%s<Expr_multiplicativa>\n", TABS); aumenta_ident();
     Fator();
     while (t.cat == SN && (t.codigo == SN_MULTIPLICACAO || t.codigo == SN_DIVISAO)) {
+        int op = t.codigo;
         print_folha(t); consome(SN, t.codigo);
-        Fator();
+        Fator(); 
+
+        if (op == SN_MULTIPLICACAO) {
+            gera("MUL");
+        } else {
+            gera("DIV");
+        }
     }
     diminui_ident(); printf("%s</Expr_multiplicativa>\n", TABS);
 }
 
 /**
- * @brief Analisa o menor componente de uma expressão (um "fator").
- */
+ * @brief Analisa o menor componente de uma expressão (um "fator").
+ * Ação semântica: gera código 'PUSH' para constantes, 'LOAD' para variáveis
+ * e 'CALL' para funções.
+ */
 void Fator() {
     printf("%s<Fator>\n", TABS); aumenta_ident();
+    char linha[100];
+
     if (t.cat == SN && (t.codigo == SN_SOMA || t.codigo == SN_SUBTRACAO || t.codigo == SN_NEGACAO)) {
         print_folha(t); consome(SN, t.codigo);
         Fator();
+        // Adicionar geração de código para negação unária se necessário
     } else if (t.cat == ID) {
+        char id_lexema[100];
+        strcpy(id_lexema, t.lexema); // Salva o nome do identificador
         print_folha(t); consome(ID, 0);
-        if (t.cat == SN && t.codigo == ABRE_COLCHETES) {
-            print_folha(t); consome(SN, ABRE_COLCHETES);
-            Expr();
-            print_folha(t); consome(SN, FECHA_COLCHETES);
-        } else if (t.cat == SN && t.codigo == ABRE_PARENTESES) {
+
+        if (t.cat == SN && t.codigo == ABRE_PARENTESES) { // Chamada de função
             print_folha(t); consome(SN, ABRE_PARENTESES);
             if (!(t.cat == SN && t.codigo == FECHA_PARENTESES)) {
-                Expr();
+                Expr(); // Gera código para o primeiro argumento
                 while (t.cat == SN && t.codigo == VIRGULA) {
                     print_folha(t); consome(SN, VIRGULA);
-                    Expr();
+                    Expr(); // Gera código para os argumentos subsequentes
                 }
             }
             print_folha(t); consome(SN, FECHA_PARENTESES);
+            
+            // Gera a instrução de chamada de procedimento
+            // Assumindo que o rótulo da função é o próprio nome
+            sprintf(linha, "CALL %s", id_lexema);
+            gera(linha);
+
+        } else { // Variável ou vetor
+            if (t.cat == SN && t.codigo == ABRE_COLCHETES) { // Acesso a vetor
+                print_folha(t); consome(SN, ABRE_COLCHETES);
+                Expr(); // Gera código para a expressão do índice
+                print_folha(t); consome(SN, FECHA_COLCHETES);
+                // Geração de código para acesso a vetor (ex: ADD para calcular offset)
+                // seria necessária aqui.
+            }
+            
+            // Gera instrução para carregar o valor da variável na pilha.
+            // Usando PUSH como substituto para LOAD m,n para simplicidade.
+            sprintf(linha, "PUSH %s", id_lexema);
+            gera(linha);
         }
-    } else if (t.cat == CT_INT || t.cat == CT_REAL || t.cat == CT_CHAR || t.cat == CT_STRING) {
+    } else if (t.cat == CT_INT) {
+        sprintf(linha, "PUSH %d", t.valInt);
+        gera(linha);
+        print_folha(t); consome(t.cat, 0);
+    } else if (t.cat == CT_REAL) {
+        sprintf(linha, "PUSH %f", t.valReal);
+        gera(linha);
+        print_folha(t); consome(t.cat, 0);
+    } else if (t.cat == CT_CHAR) {
+        sprintf(linha, "PUSH '%c'", t.valInt);
+        gera(linha);
+        print_folha(t); consome(t.cat, 0);
+    } else if (t.cat == CT_STRING) {
+        sprintf(linha, "PUSH \"%s\"", t.lexema);
+        gera(linha);
         print_folha(t); consome(t.cat, 0);
     } else if (t.cat == SN && t.codigo == ABRE_PARENTESES) {
         print_folha(t); consome(SN, ABRE_PARENTESES);

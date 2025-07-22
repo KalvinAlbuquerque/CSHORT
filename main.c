@@ -3,6 +3,7 @@
 #include "analex.h"
 #include "anasint.h"
 #include "tabela_simbolos.h"
+#include "gerador_codigo.h"
 
 // --- Variáveis Globais Definidas Aqui ---
 TOKEN t;
@@ -28,6 +29,8 @@ void main()
 
     printf("\n-------------------------------------------\n");
     printf("Analise sintatica concluida com sucesso!\n");
+
+    salvar_codigo_em_arquivo("codigo_maquina.txt");
 
     fclose(fd);
 }
