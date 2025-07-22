@@ -1,1 +1,1 @@
-gcc main.c analex.c anasint.c tabela_simbolos.c ansem.c -o analisador_cshort
+gcc main.c analex.c anasint.c tabela_simbolos.c ansem.c gerador_codigo.c -o analisador_cshort

@@ -90,6 +90,7 @@ typedef struct tokenInfo {
     TIPO tipo;              ///< O tipo de dado do identificador.
     IDCATEGORIA idcategoria;///< A categoria do identificador (variável, função, etc.).
     ZUMBI zumbi;            ///< O status de atividade do símbolo (VIVO ou ZUMBI_).
+    int offset;
 } TokenInfo;
 
 /**

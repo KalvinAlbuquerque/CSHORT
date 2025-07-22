@@ -3,15 +3,7 @@
 */
 
 int main() {
-    float meu_salario;
-    bool tenho_dinheiro;
-
-    meu_salario = 1500.50;
-
-    /* ERRO SEMANTICO: A linha abaixo tenta atribuir um float a um bool.
-       O analisador deve acusar um erro aqui.
-    */
-    tenho_dinheiro = meu_salario;
-
+    int a;
+    a = 1+5;
     return 0;
 }
