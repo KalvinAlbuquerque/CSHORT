@@ -1,9 +1,9 @@
-intcon resultado_global;
-charcon flag_pronto;
+int resultado_global;
+char flag_pronto;
 
 void main() 
 {
-    intcon c;
+    int c;
 
     c = 1 * 1;
 }

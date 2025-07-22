@@ -44,19 +44,19 @@ int check_reserved_word(const char *lexema)
     {
         return PR_RETURN;
     } 
-    if (strcmp(lexema, "intcon") == 0)
+    if (strcmp(lexema, "int") == 0)
     {
         return PR_INTCON;
     } 
-    if (strcmp(lexema, "realcon") == 0)
+    if (strcmp(lexema, "real") == 0)
     {
         return PR_REALCON;
     }
-    if (strcmp(lexema, "charcon") == 0)
+    if (strcmp(lexema, "char") == 0)
     {
         return PR_CHARCON;
     } 
-    if (strcmp(lexema, "stringcon") == 0)
+    if (strcmp(lexema, "string") == 0)
     {
         return PR_STRINGCON;
     }
