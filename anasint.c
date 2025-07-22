@@ -1,17 +1,17 @@
-// Anasint.c
-
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>          // Necessário para strcat e strlen
+#include <string.h>
 #include "anasint.h"
 #include "analex.h"
-#include "tabela_simbolos.h" // Inclusão do header da tabela de símbolos
+#include "tabela_simbolos.h"
+#include "ansem.h"
 
-// --- Variáveis Globais para Tabela de Símbolos ---
-TokenInfo tokenInfo; // Estrutura para armazenar informações do token atual
-Tabela tabela;       // A tabela de símbolos
+// --- Variáveis Globais ---
+TokenInfo tokenInfo;
+char nome_funcao_atual[31];
+TIPO tipo_retorno_funcao_atual;
 
-// --- Protótipos de Funções ---
+// --- Protótipos de Funções Internas ---
 void Prog();
 void Decl_ou_Func();
 void Func_body(int procPos);
@@ -19,31 +19,21 @@ void Decl();
 void Decl_var_body();
 void Decl_var();
 int Tipo();
-void Tipos_param();
+void Tipos_param(int func_pos);
 void Cmd();
-void Expr();
-void Expr_atrib();
-void Expr_ou();
-void Expr_e();
-void Expr_relacional();
-void Expr_aditiva();
-void Expr_multiplicativa();
-void Fator();
+TipoExpressao Expr();
+TipoExpressao Expr_atrib();
+TipoExpressao Expr_ou();
+TipoExpressao Expr_e();
+TipoExpressao Expr_relacional();
+TipoExpressao Expr_aditiva();
+TipoExpressao Expr_multiplicativa();
+TipoExpressao Fator();
 
-/**
- * @brief Aumenta a indentação para a impressão da árvore sintática.
- */
+// --- Funções Auxiliares de Identação e Impressão (sem alterações) ---
 void aumenta_ident() { if (strlen(TABS) < sizeof(TABS) - 3) strcat(TABS, "  "); }
-
-/**
- * @brief Diminui a indentação para a impressão da árvore sintática.
- */
 void diminui_ident() { if (strlen(TABS) >= 2) TABS[strlen(TABS) - 2] = '\0'; }
 
-/**
- * @brief Imprime um token formatado no console para fins de depuração.
- * @param tk O token a ser impresso.
- */
 void print_folha(TOKEN tk) {
     printf("%s- ", TABS);
     switch (tk.cat) {
@@ -58,93 +48,19 @@ void print_folha(TOKEN tk) {
     }
 }
 
-/**
- * @brief Converte um token (categoria e código) em uma descrição textual amigável.
- * @return Uma string constante (const char*) com a descrição do token.
- */
-const char* getTokenDescription(int category, int code) {
-    static char buffer[100];
-    switch (category) {
-        case ID: return "um Identificador";
-        case CT_INT: return "uma constante inteira";
-        case CT_REAL: return "uma constante real";
-        case CT_CHAR: return "uma constante char";
-        case CT_STRING: return "uma constante string";
-        case FIM_ARQ: return "o fim do arquivo";
-        case SN:
-            switch (code) {
-                case SN_SOMA: return "o operador '+'";
-                case SN_SUBTRACAO: return "o operador '-'";
-                case SN_MULTIPLICACAO: return "o operador '*'";
-                case SN_DIVISAO: return "o operador '/'";
-                case SN_ATRIBUICAO: return "o operador de atribuicao '='";
-                case SN_MAIOR: return "o operador '>'";
-                case SN_MENOR: return "o operador '<'";
-                case SN_MAIOR_IGUAL: return "o operador '>='";
-                case SN_MENOR_IGUAL: return "o operador '<='";
-                case SN_COMPARACAO: return "o operador de comparacao '=='";
-                case SN_DIFERENTE: return "o operador de diferenca '!='";
-                case SN_NEGACAO: return "o operador de negacao '!'";
-                case SN_AND: return "o operador logico '&&'";
-                case SN_OR: return "o operador logico '||'";
-                case ABRE_PARENTESES: return "o abre parenteses '('";
-                case FECHA_PARENTESES: return "o fecha parenteses ')'";
-                case PONTO_VIRGULA: return "o ponto e virgula ';'";
-                case VIRGULA: return "a virgula ','";
-                case ABRE_COLCHETES: return "o abre colchetes '['";
-                case FECHA_COLCHETES: return "o fecha colchetes ']'";
-                case ABRE_CHAVES: return "o abre chaves '{'";
-                case FECHA_CHAVES: return "o fecha chaves '}'";
-                default: return "um sinal/operador desconhecido";
-            }
-        case PALAVRA_RESERVADA:
-            switch (code) {
-                case PR_IF: return "a palavra reservada 'if'";
-                case PR_ELSE: return "a palavra reservada 'else'";
-                case PR_WHILE: return "a palavra reservada 'while'";
-                case PR_FOR: return "a palavra reservada 'for'";
-                case PR_RETURN: return "a palavra reservada 'return'";
-                case PR_INTCON: return "o tipo 'int'";
-                case PR_REALCON: return "o tipo 'real'";
-                case PR_CHARCON: return "o tipo 'char'";
-                case PR_STRINGCON: return "o tipo 'string'";
-                case PR_VOID: return "o tipo 'void'";
-                case PR_BOOL: return "o tipo 'bool'";
-                case PR_FLOAT: return "o tipo 'float'";
-                default: sprintf(buffer, "a palavra reservada de codigo %d", code); return buffer;
-            }
-        default: return "um token desconhecido";
-    }
-}
-
-/**
- * @brief Verifica se o token atual é o esperado e avança para o próximo.
- * Se o token não for o esperado, formata e exibe um erro detalhado.
- */
+// --- Função `consome` (sem alterações) ---
 void consome(int categoria_esperada, int codigo_esperado) {
     if (t.cat == categoria_esperada && (codigo_esperado == 0 || t.codigo == codigo_esperado)) {
         t = Analex(fd);
     } else {
-        const char* desc_esperado = getTokenDescription(categoria_esperada, codigo_esperado);
-        const char* desc_encontrado = getTokenDescription(t.cat, t.codigo);
         char msg_erro[256];
-
-        if (t.cat == ID || t.cat == CT_STRING) {
-            sprintf(msg_erro, "Token inesperado. Esperado %s, mas encontrado %s ('%s').", desc_esperado, desc_encontrado, t.lexema);
-        } else if (t.cat == CT_INT) {
-            sprintf(msg_erro, "Token inesperado. Esperado %s, mas encontrado %s (%d).", desc_esperado, desc_encontrado, t.valInt);
-        } else if (t.cat == CT_REAL) {
-            sprintf(msg_erro, "Token inesperado. Esperado %s, mas encontrado %s (%f).", desc_esperado, desc_encontrado, t.valReal);
-        } else {
-            sprintf(msg_erro, "Token inesperado. Esperado %s, mas encontrado %s.", desc_esperado, desc_encontrado);
-        }
+        sprintf(msg_erro, "Token inesperado. Esperado %d, mas encontrado %d.", categoria_esperada, t.cat);
         error(msg_erro);
     }
 }
 
-/**
- * @brief Verifica se o token atual é uma palavra-chave de tipo.
- */
+// --- Funções de Análise Sintática com Semântica Integrada ---
+
 int Tipo() {
     if (t.cat == PALAVRA_RESERVADA) {
         switch (t.codigo) {
@@ -158,10 +74,6 @@ int Tipo() {
     return 0;
 }
 
-/**
- * @brief Ponto de entrada do analisador sintático. Analisa o programa inteiro.
- * Gramática: `prog ::= { decl ';' | func }`
- */
 void Prog() {
     printf("%s<Prog>\n", TABS); aumenta_ident();
     t = Analex(fd);
@@ -173,27 +85,33 @@ void Prog() {
             error("Esperado uma declaracao de variavel ou definicao de funcao no escopo global.");
         }
     }
+    // Checagem semântica final: verificar se a função main foi declarada
+    if (buscaLexPos("main") == -1) {
+        erro_semantico("Funcao 'main' nao declarada no programa.");
+    }
     limparTabela();
     diminui_ident(); printf("%s</Prog>\n", TABS);
 }
 
-/**
- * @brief Distingue entre uma declaração de variável e uma de função.
- */
 void Decl_ou_Func() {
     printf("%s<Decl_ou_Func>\n", TABS); aumenta_ident();
     int tipo_atual = tokenInfo.tipo;
     if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_VOID) {
         tipo_atual = NA_TIPO;
     }
-    
+
     print_folha(t); consome(t.cat, t.codigo);
+
+    // Salva nome e tipo para uso futuro (em funções)
     strcpy(tokenInfo.lexema, t.lexema);
+    strcpy(nome_funcao_atual, t.lexema);
     tokenInfo.tipo = tipo_atual;
+
     print_folha(t); consome(ID, 0);
 
     if (t.cat == SN && t.codigo == ABRE_PARENTESES) {
         tokenInfo.idcategoria = PROC;
+        tipo_retorno_funcao_atual = tokenInfo.tipo;
         int func_pos = tabela.topo;
         inserirNaTabela(tokenInfo);
         Func_body(func_pos);
@@ -205,24 +123,20 @@ void Decl_ou_Func() {
     diminui_ident(); printf("%s</Decl_ou_Func>\n", TABS);
 }
 
-/**
- * @brief Analisa o corpo e os parâmetros de uma função.
- * Gramática: `func ::= tipo id '(' tipos_param ')' '{' ... '}'`
- */
 void Func_body(int procPos) {
     printf("%s<Func_body>\n", TABS); aumenta_ident();
     print_folha(t); consome(SN, ABRE_PARENTESES);
     tokenInfo.escopo = LOCAL;
-    
+
     if (t.cat != SN || t.codigo != FECHA_PARENTESES) {
-        Tipos_param();
+        Tipos_param(procPos);
     }
-    
+
     print_folha(t); consome(SN, FECHA_PARENTESES);
-    
-    if (t.cat == SN && t.codigo == PONTO_VIRGULA) {
+
+    if (t.cat == SN && t.codigo == PONTO_VIRGULA) { // Protótipo de função
         print_folha(t); consome(SN, PONTO_VIRGULA);
-    } else {
+    } else { // Corpo da função
         print_folha(t); consome(SN, ABRE_CHAVES);
         while (Tipo()) {
             tokenInfo.idcategoria = VAR_LOCAL;
@@ -238,9 +152,6 @@ void Func_body(int procPos) {
     diminui_ident(); printf("%s</Func_body>\n", TABS);
 }
 
-/**
- * @brief Analisa o restante de uma linha de declaração de variáveis.
- */
 void Decl_var_body() {
     printf("%s<Decl_var_body>\n", TABS); aumenta_ident();
     if (t.cat == SN && t.codigo == ABRE_COLCHETES) {
@@ -248,7 +159,7 @@ void Decl_var_body() {
         print_folha(t); consome(CT_INT, 0);
         print_folha(t); consome(SN, FECHA_COLCHETES);
     }
-    
+
     while (t.cat == SN && t.codigo == VIRGULA) {
         print_folha(t); consome(SN, VIRGULA);
         Decl_var();
@@ -257,10 +168,6 @@ void Decl_var_body() {
     diminui_ident(); printf("%s</Decl_var_body>\n", TABS);
 }
 
-/**
- * @brief Analisa uma linha de declaração de variáveis locais.
- * Gramática: `decl ::= tipo decl_var { ',' decl_var } ';'`
- */
 void Decl() {
     printf("%s<Decl>\n", TABS); aumenta_ident();
     if (Tipo()) {
@@ -268,7 +175,7 @@ void Decl() {
         print_folha(t); consome(t.cat, t.codigo);
         tokenInfo.tipo = tipo_linha;
         Decl_var();
-        
+
         while (t.cat == SN && t.codigo == VIRGULA) {
             print_folha(t); consome(SN, VIRGULA);
             tokenInfo.tipo = tipo_linha;
@@ -282,10 +189,6 @@ void Decl() {
     diminui_ident(); printf("%s</Decl>\n", TABS);
 }
 
-/**
- * @brief Analisa uma única declaração de variável (um `decl_var`).
- * Gramática: `decl_var ::= id [ '[' intcon ']' ]`
- */
 void Decl_var() {
     printf("%s<Decl_var>\n", TABS); aumenta_ident();
     strcpy(tokenInfo.lexema, t.lexema);
@@ -300,11 +203,7 @@ void Decl_var() {
     diminui_ident(); printf("%s</Decl_var>\n", TABS);
 }
 
-/**
- * @brief Analisa a lista de parâmetros na declaração de uma função.
- * Gramática: `tipos_param ::= void | tipo (id | id '['']') { ',' ... }`
- */
-void Tipos_param() {
+void Tipos_param(int func_pos) {
     printf("%s<Tipos_param>\n", TABS); aumenta_ident();
     if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_VOID) {
         print_folha(t); consome(PALAVRA_RESERVADA, PR_VOID);
@@ -312,7 +211,7 @@ void Tipos_param() {
         while (Tipo()) {
             int tipo_param = tokenInfo.tipo;
             print_folha(t); consome(t.cat, t.codigo);
-            
+
             tokenInfo.tipo = tipo_param;
             tokenInfo.idcategoria = PROC_PAR;
             tokenInfo.escopo = LOCAL;
@@ -335,16 +234,13 @@ void Tipos_param() {
     diminui_ident(); printf("%s</Tipos_param>\n", TABS);
 }
 
-/**
- * @brief Analisa um único comando da linguagem.
- * Gramática: `cmd ::= if... | while... | for... | return... | atrib... | ...`
- */
 void Cmd() {
     printf("%s<Cmd>\n", TABS); aumenta_ident();
     if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_IF) {
         print_folha(t); consome(PALAVRA_RESERVADA, PR_IF);
         print_folha(t); consome(SN, ABRE_PARENTESES);
-        Expr();
+        TipoExpressao expr = Expr();
+        checa_condicao_booleana("if", expr);
         print_folha(t); consome(SN, FECHA_PARENTESES);
         Cmd();
         if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_ELSE) {
@@ -354,7 +250,8 @@ void Cmd() {
     } else if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_WHILE) {
         print_folha(t); consome(PALAVRA_RESERVADA, PR_WHILE);
         print_folha(t); consome(SN, ABRE_PARENTESES);
-        Expr();
+        TipoExpressao expr = Expr();
+        checa_condicao_booleana("while", expr);
         print_folha(t); consome(SN, FECHA_PARENTESES);
         Cmd();
     } else if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_FOR) {
@@ -362,16 +259,24 @@ void Cmd() {
         print_folha(t); consome(SN, ABRE_PARENTESES);
         if (t.cat != SN || t.codigo != PONTO_VIRGULA) { Expr_atrib(); }
         print_folha(t); consome(SN, PONTO_VIRGULA);
-        if (t.cat != SN || t.codigo != PONTO_VIRGULA) { Expr(); }
+        if (t.cat != SN || t.codigo != PONTO_VIRGULA) {
+            TipoExpressao expr = Expr();
+            checa_condicao_booleana("for", expr);
+        }
         print_folha(t); consome(SN, PONTO_VIRGULA);
         if (t.cat != SN || t.codigo != FECHA_PARENTESES) { Expr_atrib(); }
         print_folha(t); consome(SN, FECHA_PARENTESES);
         Cmd();
     } else if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_RETURN) {
         print_folha(t); consome(PALAVRA_RESERVADA, PR_RETURN);
+        TipoExpressao expr_ret;
+        expr_ret.tipo = NA_TIPO;
+        int tem_expr = 0;
         if (t.cat != SN || t.codigo != PONTO_VIRGULA) {
-            Expr();
+            expr_ret = Expr();
+            tem_expr = 1;
         }
+        checa_retorno_funcao(tipo_retorno_funcao_atual, nome_funcao_atual, expr_ret, tem_expr);
         print_folha(t); consome(SN, PONTO_VIRGULA);
     } else if (t.cat == SN && t.codigo == ABRE_CHAVES) {
         print_folha(t); consome(SN, ABRE_CHAVES);
@@ -388,108 +293,133 @@ void Cmd() {
     diminui_ident(); printf("%s</Cmd>\n", TABS);
 }
 
-/**
- * @brief Ponto de entrada para a análise de qualquer expressão.
- */
-void Expr() {
+TipoExpressao Expr() {
     printf("%s<Expr>\n", TABS); aumenta_ident();
-    Expr_atrib();
+    TipoExpressao tipo = Expr_atrib();
     diminui_ident(); printf("%s</Expr>\n", TABS);
+    return tipo;
 }
 
-/**
- * @brief Analisa uma expressão de atribuição.
- */
-void Expr_atrib() {
+TipoExpressao Expr_atrib() {
     printf("%s<Expr_atrib>\n", TABS); aumenta_ident();
-    Expr_ou();
+    TipoExpressao esq = Expr_ou();
     if (t.cat == SN && t.codigo == SN_ATRIBUICAO) {
         print_folha(t); consome(SN, SN_ATRIBUICAO);
-        Expr_atrib();
+        TipoExpressao dir = Expr_atrib();
+        checa_compatibilidade_atribuicao(esq, dir);
+        esq.tipo = dir.tipo;
+        esq.eh_lvalue = 0;
+        strcpy(esq.lexema, "");
     }
     diminui_ident(); printf("%s</Expr_atrib>\n", TABS);
+    return esq;
 }
 
-/**
- * @brief Analisa expressões com o operador OU (||).
- */
-void Expr_ou() {
+TipoExpressao Expr_ou() {
     printf("%s<Expr_ou>\n", TABS); aumenta_ident();
-    Expr_e();
+    TipoExpressao esq = Expr_e();
     while (t.cat == SN && t.codigo == SN_OR) {
         print_folha(t); consome(SN, SN_OR);
-        Expr_e();
+        TipoExpressao dir = Expr_e();
+        esq = checa_compatibilidade_operador_logico(esq, dir);
     }
     diminui_ident(); printf("%s</Expr_ou>\n", TABS);
+    return esq;
 }
 
-/**
- * @brief Analisa expressões com o operador E (&&).
- */
-void Expr_e() {
+TipoExpressao Expr_e() {
     printf("%s<Expr_e>\n", TABS); aumenta_ident();
-    Expr_relacional();
+    TipoExpressao esq = Expr_relacional();
     while (t.cat == SN && t.codigo == SN_AND) {
         print_folha(t); consome(SN, SN_AND);
-        Expr_relacional();
+        TipoExpressao dir = Expr_relacional();
+        esq = checa_compatibilidade_operador_logico(esq, dir);
     }
     diminui_ident(); printf("%s</Expr_e>\n", TABS);
+    return esq;
 }
 
-/**
- * @brief Analisa expressões com operadores relacionais (==, !=, <, >, etc.).
- */
-void Expr_relacional() {
+TipoExpressao Expr_relacional() {
     printf("%s<Expr_relacional>\n", TABS); aumenta_ident();
-    Expr_aditiva();
+    TipoExpressao esq = Expr_aditiva();
     if (t.cat == SN && (t.codigo == SN_COMPARACAO || t.codigo == SN_DIFERENTE || t.codigo == SN_MAIOR || t.codigo == SN_MENOR || t.codigo == SN_MAIOR_IGUAL || t.codigo == SN_MENOR_IGUAL)) {
         print_folha(t); consome(SN, t.codigo);
-        Expr_aditiva();
+        TipoExpressao dir = Expr_aditiva();
+        esq = checa_compatibilidade_operador_relacional(esq, dir);
     }
     diminui_ident(); printf("%s</Expr_relacional>\n", TABS);
+    return esq;
 }
 
-/**
- * @brief Analisa expressões com operadores de adição e subtração (+, -).
- */
-void Expr_aditiva() {
+TipoExpressao Expr_aditiva() {
     printf("%s<Expr_aditiva>\n", TABS); aumenta_ident();
-    Expr_multiplicativa();
+    TipoExpressao esq = Expr_multiplicativa();
     while (t.cat == SN && (t.codigo == SN_SOMA || t.codigo == SN_SUBTRACAO)) {
         print_folha(t); consome(SN, t.codigo);
-        Expr_multiplicativa();
+        TipoExpressao dir = Expr_multiplicativa();
+        esq = checa_compatibilidade_operador_aritmetico(esq, dir);
     }
     diminui_ident(); printf("%s</Expr_aditiva>\n", TABS);
+    return esq;
 }
 
-/**
- * @brief Analisa expressões com operadores de multiplicação e divisão (*, /).
- */
-void Expr_multiplicativa() {
+TipoExpressao Expr_multiplicativa() {
     printf("%s<Expr_multiplicativa>\n", TABS); aumenta_ident();
-    Fator();
+    TipoExpressao esq = Fator();
     while (t.cat == SN && (t.codigo == SN_MULTIPLICACAO || t.codigo == SN_DIVISAO)) {
         print_folha(t); consome(SN, t.codigo);
-        Fator();
+        TipoExpressao dir = Fator();
+        esq = checa_compatibilidade_operador_aritmetico(esq, dir);
     }
     diminui_ident(); printf("%s</Expr_multiplicativa>\n", TABS);
+    return esq;
 }
 
-/**
- * @brief Analisa o menor componente de uma expressão (um "fator").
- */
-void Fator() {
+TipoExpressao Fator() {
     printf("%s<Fator>\n", TABS); aumenta_ident();
-    if (t.cat == SN && (t.codigo == SN_SOMA || t.codigo == SN_SUBTRACAO || t.codigo == SN_NEGACAO)) {
+    TipoExpressao tipo_fator;
+    tipo_fator.eh_lvalue = 0;
+    tipo_fator.eh_constante = 0;
+    strcpy(tipo_fator.lexema, "");
+
+    if (t.cat == SN && (t.codigo == SN_SOMA || t.codigo == SN_SUBTRACAO)) {
         print_folha(t); consome(SN, t.codigo);
-        Fator();
+        tipo_fator = Fator();
+        tipo_fator.eh_lvalue = 0;
+    } else if (t.cat == SN && t.codigo == SN_NEGACAO) {
+        print_folha(t); consome(SN, t.codigo);
+        tipo_fator = Fator();
+        if(tipo_fator.tipo != BOOL_ && tipo_fator.tipo != INT_){
+            erro_semantico("Operador de negacao '!' exige tipo compativel com booleano, mas foi recebido '%s'.", T_tipo[tipo_fator.tipo]);
+        }
+        tipo_fator.tipo = BOOL_;
+        tipo_fator.eh_lvalue = 0;
     } else if (t.cat == ID) {
+        TokenInfo id_info = buscaDecl(t.lexema);
+        if (id_info.zumbi == ZUMBI_) {
+            erro_semantico("A variavel '%s' esta fora de escopo.", t.lexema);
+        }
+        tipo_fator.tipo = id_info.tipo;
+        tipo_fator.eh_lvalue = (id_info.idcategoria != PROC);
+        strcpy(tipo_fator.lexema, t.lexema);
+
+        char lexema_id[31];
+        strcpy(lexema_id, t.lexema);
         print_folha(t); consome(ID, 0);
+
         if (t.cat == SN && t.codigo == ABRE_COLCHETES) {
             print_folha(t); consome(SN, ABRE_COLCHETES);
-            Expr();
+            TipoExpressao indice = Expr();
+            if (indice.tipo != INT_ && indice.tipo != CHAR_) {
+                erro_semantico("O indice do array '%s' deve ser um inteiro, mas foi recebido '%s'.", lexema_id, T_tipo[indice.tipo]);
+            }
             print_folha(t); consome(SN, FECHA_COLCHETES);
         } else if (t.cat == SN && t.codigo == ABRE_PARENTESES) {
+             if (id_info.idcategoria != PROC) {
+                erro_semantico("O identificador '%s' nao e uma funcao e nao pode ser chamado.", lexema_id);
+            }
+            tipo_fator.eh_lvalue = 0;
+            strcpy(tipo_fator.lexema, "");
             print_folha(t); consome(SN, ABRE_PARENTESES);
             if (!(t.cat == SN && t.codigo == FECHA_PARENTESES)) {
                 Expr();
@@ -500,14 +430,19 @@ void Fator() {
             }
             print_folha(t); consome(SN, FECHA_PARENTESES);
         }
-    } else if (t.cat == CT_INT || t.cat == CT_REAL || t.cat == CT_CHAR || t.cat == CT_STRING) {
+    } else if (t.cat == CT_INT || t.cat == CT_CHAR || t.cat == CT_REAL) {
+        tipo_fator.eh_constante = 1;
+        if (t.cat == CT_INT) tipo_fator.tipo = INT_;
+        else if (t.cat == CT_CHAR) tipo_fator.tipo = CHAR_;
+        else tipo_fator.tipo = REAL_;
         print_folha(t); consome(t.cat, 0);
     } else if (t.cat == SN && t.codigo == ABRE_PARENTESES) {
         print_folha(t); consome(SN, ABRE_PARENTESES);
-        Expr();
+        tipo_fator = Expr();
         print_folha(t); consome(SN, FECHA_PARENTESES);
     } else {
         error("Fator mal formado. Esperado ID, constante ou '('");
     }
     diminui_ident(); printf("%s</Fator>\n", TABS);
+    return tipo_fator;
 }

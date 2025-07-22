@@ -1,41 +1,44 @@
-// Anasint.h
 #ifndef ANASINT_H
 #define ANASINT_H
 
 #include <stdio.h>
-#include "analex.h" // Inclui o seu analisador léxico do Cshort
+#include "analex.h"
+#include "ansem.h" // <-- ADICIONADO: Garante que TipoExpressao seja conhecido
 
-// --- Variáveis Globais ---
-extern TOKEN t;       // Token atual, lido pelo Analex
-extern FILE *fd;      // Ponteiro para o arquivo de código fonte
-extern char TABS[200]; // Declara que a variável TABS existe em outro arquivo
+//================================================================================
+// 1. Variáveis Globais
+//================================================================================
+extern FILE *fd;
+extern TOKEN t;
+extern char TABS[200];
 
-// --- Funções do Analisador Sintático (baseadas na gramática) ---
 
-// Função inicial que começa a análise
+//================================================================================
+// 2. Protótipos das Funções de Análise
+//================================================================================
+void aumenta_ident();
+void diminui_ident();
+void print_folha(TOKEN tk);
+void consome(int categoria_esperada, int codigo_esperado);
+
 void Prog();
-
-// Funções para declarações
+void Decl_ou_Func();
+void Func_body(int procPos);
 void Decl();
+void Decl_var_body();
 void Decl_var();
-int Tipo(); // Retorna 1 se encontrou um tipo, 0 caso contrário
-void Tipos_param();
-
-// Função para análise de funções
-void Func();
-
-// Funções para comandos
+int Tipo();
+void Tipos_param(int func_pos);
 void Cmd();
-void Cmd_if();
-void Cmd_while();
-void Cmd_for();
-void Cmd_return();
-void Atrib();
 
-// Funções para análise de expressões
-void Expr();
-void Expr_simp();
-void Termo();
-void Fator();
+// Protótipos das funções de expressão corrigidos
+TipoExpressao Expr();
+TipoExpressao Expr_atrib();
+TipoExpressao Expr_ou();
+TipoExpressao Expr_e();
+TipoExpressao Expr_relacional();
+TipoExpressao Expr_aditiva();
+TipoExpressao Expr_multiplicativa();
+TipoExpressao Fator();
 
-#endif
+#endif // ANASINT_H

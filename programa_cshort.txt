@@ -1,35 +1,17 @@
-intcon resultado_global;
-charcon flag_pronto;
+/*
+  Arquivo para testar um erro de atribuicao de tipos incompativeis.
+*/
 
-intcon calcular_fatorial(intcon n) {
-    if (n == 0) {
-        return 1;
-    } else {
-        return n * calcular_fatorial(n - 1);
-    }
-}
+int main() {
+    float meu_salario;
+    bool tenho_dinheiro;
 
-void main() {
-    intcon valores[10];
-    intcon i;
-    intcon x;
-    float limite;
-    
-    i = 0;
-    x = 5;
-    limite = 99.5;
-    resultado_global = 0;
-    
-    while (i < 10) {
-        valores[i] = i * 2;
-        i = i + 1;
-    }
+    meu_salario = 1500.50;
 
-    if ( (valores[2] > 3 && x == 5) || !(limite < 100.0) ) {
-        resultado_global = calcular_fatorial(x);
-    } else {
-        resultado_global = -1;
-    }
-    
-    return;
+    /* ERRO SEMANTICO: A linha abaixo tenta atribuir um float a um bool.
+       O analisador deve acusar um erro aqui.
+    */
+    tenho_dinheiro = meu_salario;
+
+    return 0;
 }
