@@ -5,17 +5,16 @@
 #include "analex.h"
 #include "tabela_simbolos.h"
 #include "ansem.h"
-#include "gerador_codigo.h" // Inclui o novo módulo
+#include "gerador_codigo.h"
 
 // --- Variáveis Globais ---
 TokenInfo tokenInfo;
 char nome_funcao_atual[31];
 TIPO tipo_retorno_funcao_atual;
 
-// Contadores para os deslocamentos de memória
 int offset_global = 0;
 int offset_local = 0;
-int offset_param = 0; // Embora não usado neste exemplo, é bom ter
+int offset_param = 0;
 
 // --- Protótipos de Funções Internas ---
 void Prog();
@@ -36,35 +35,19 @@ TipoExpressao Expr_aditiva();
 TipoExpressao Expr_multiplicativa();
 TipoExpressao Fator();
 
-// --- Funções Auxiliares de Indentação ---
+// --- Funções Auxiliares ---
 void aumenta_ident() {
-    if (strlen(TABS) < sizeof(TABS) - 3) {
-        strcat(TABS, "  ");
-    }
+    if (strlen(TABS) < sizeof(TABS) - 3) strcat(TABS, "  ");
 }
 
 void diminui_ident() {
-    if (strlen(TABS) >= 2) {
-        TABS[strlen(TABS) - 2] = '\0';
-    }
+    if (strlen(TABS) >= 2) TABS[strlen(TABS) - 2] = '\0';
 }
 
-// --- Funções de Análise ---
-
-/**
- * @brief Imprime um token "folha" na árvore de análise e o consome.
- * @param tk O token a ser impresso.
- */
 void print_folha(TOKEN tk) {
     printf("%s%s (%s)\n", TABS, tk.lexema, tk.cat == ID ? "ID" : "Palavra Reservada");
 }
 
-/**
- * @brief Consome o token atual se ele corresponder à categoria e ao código esperados.
- * Em caso de falha, exibe um erro e encerra.
- * @param categoria_esperada A categoria do token esperado.
- * @param codigo_esperado O código específico do token (0 para qualquer código dentro da categoria).
- */
 void consome(int categoria_esperada, int codigo_esperado) {
     if (t.cat == categoria_esperada && (codigo_esperado == 0 || t.codigo == codigo_esperado)) {
         t = Analex(fd);
@@ -76,10 +59,6 @@ void consome(int categoria_esperada, int codigo_esperado) {
     }
 }
 
-/**
- * @brief Verifica se o token atual é um tipo de dado.
- * @return 1 se for um tipo, 0 caso contrário.
- */
 int Tipo() {
     if (t.cat == PALAVRA_RESERVADA) {
         if (t.codigo == PR_INTCON|| t.codigo == PR_REALCON || t.codigo == PR_BOOL || t.codigo == PR_CHARCON) {
@@ -96,29 +75,32 @@ int Tipo() {
     return 0;
 }
 
-
-// --- Funções de Análise Sintática com Geração de Código ---
+void gerar_load_se_necessario(TipoExpressao expr) {
+    if (expr.eh_lvalue) {
+        TokenInfo id_info = buscaDecl(expr.lexema);
+        gerar_codigo("LOAD %d, %d", id_info.escopo == GLOBAL ? 0 : 1, id_info.offset);
+    }
+}
 
 void Prog() {
     printf("%s<Prog>\n", TABS);
     aumenta_ident();
     t = Analex(fd);
 
-    gerar_codigo("INIP"); // Geração de código: Inicia programa principal
-
-    // Loop para processar todas as declarações globais e funções
+    gerar_codigo("INIP");
+    
     while (Tipo() || (t.cat == PALAVRA_RESERVADA && t.codigo == PR_VOID)) {
         Decl_ou_Func();
     }
     
-    gerar_codigo("CALL main"); // Chama a função main, ponto de entrada do programa
-    gerar_codigo("HALT");      // Para a execução da máquina de pilha ao final da main
-
     if (buscaLexPos("main") == -1) {
         erro_semantico("Funcao 'main' nao declarada no programa.");
     }
+
+    gerar_codigo("CALL main");
+    gerar_codigo("HALT");
     
-    limparTabela(); // Limpa a tabela de símbolos no final
+    limparTabela();
     diminui_ident();
     printf("%s</Prog>\n", TABS);
 }
@@ -131,7 +113,7 @@ void Decl_ou_Func() {
     if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_VOID) {
         tipo_atual = NA_TIPO;
     } else {
-        tipo_atual = tokenInfo.tipo; // O tipo já foi setado por Tipo()
+        tipo_atual = tokenInfo.tipo;
     }
 
     print_folha(t);
@@ -144,12 +126,11 @@ void Decl_ou_Func() {
     print_folha(t);
     consome(ID, 0);
 
-    // Se o próximo token é '(', trata-se de uma função
     if (t.cat == SN && t.codigo == ABRE_PARENTESES) {
         if (strcmp(tokenInfo.lexema, "main") == 0) {
-            gerar_codigo("LABEL main"); // Rótulo especial para a função main
+            gerar_codigo("LABEL main");
         } else {
-            gerar_codigo("LABEL %s", tokenInfo.lexema); // Rótulo para outras funções
+            gerar_codigo("LABEL %s", tokenInfo.lexema);
         }
         tokenInfo.idcategoria = PROC;
         tipo_retorno_funcao_atual = tokenInfo.tipo;
@@ -159,21 +140,18 @@ void Decl_ou_Func() {
         
         int num_params = Func_body(func_pos);
         
-        // Finaliza a função
         matarZumbis(func_pos);
         retirarLocais();
         
-        // Retorna o controle, limpando os parâmetros da pilha
-        gerar_codigo("RET 1, %d", num_params); 
+        gerar_codigo("RET 0, %d", num_params);
     } 
-    // Caso contrário, é uma declaração de variável global
     else {
         tokenInfo.idcategoria = VAR_GLOBAL;
         tokenInfo.escopo = GLOBAL;
         tokenInfo.offset = offset_global++;
         inserirNaTabela(tokenInfo);
         Decl_var_body();
-        gerar_codigo("AMEM 1"); // Aloca espaço para a variável global declarada
+        gerar_codigo("AMEM 1");
     }
     diminui_ident();
     printf("%s</Decl_ou_Func>\n", TABS);
@@ -186,8 +164,8 @@ int Func_body(int procPos) {
     print_folha(t);
     consome(SN, ABRE_PARENTESES);
     
-    offset_local = 0; // Reseta o deslocamento de variáveis locais
-    offset_param = 0; // Reseta o deslocamento de parâmetros
+    offset_local = 0;
+    offset_param = 0;
 
     int num_params = 0;
     if (t.cat != SN || t.codigo != FECHA_PARENTESES) {
@@ -197,9 +175,10 @@ int Func_body(int procPos) {
     print_folha(t);
     consome(SN, FECHA_PARENTESES);
 
-    gerar_codigo("INIPR 1"); // Geração de código: início de procedimento de nível 1
+    if (strcmp(nome_funcao_atual, "main") != 0) {
+        gerar_codigo("INIPR 1");
+    }
 
-    // Corpo da função pode ser um bloco de comandos ou um protótipo
     if (t.cat == SN && t.codigo == PONTO_VIRGULA) {
         print_folha(t);
         consome(SN, PONTO_VIRGULA);
@@ -208,7 +187,6 @@ int Func_body(int procPos) {
         consome(SN, ABRE_CHAVES);
         
         int contador_locais = 0;
-        // Declaração de variáveis locais
         while (Tipo()) {
             tokenInfo.idcategoria = VAR_LOCAL;
             tokenInfo.escopo = LOCAL;
@@ -216,17 +194,14 @@ int Func_body(int procPos) {
             contador_locais++;
         }
         
-        // Aloca espaço para todas as variáveis locais de uma vez
         if (contador_locais > 0) {
             gerar_codigo("AMEM %d", contador_locais);
         }
         
-        // Processa os comandos dentro da função
         while (!(t.cat == SN && t.codigo == FECHA_CHAVES)) {
             Cmd();
         }
         
-        // Desaloca o espaço das variáveis locais
         if (contador_locais > 0) {
             gerar_codigo("DMEM %d", contador_locais);
         }
@@ -240,7 +215,6 @@ int Func_body(int procPos) {
 }
 
 void Decl_var_body() {
-    // Implementação para declarações de variáveis (se houver mais complexidade)
     if (t.cat == SN && t.codigo == PONTO_VIRGULA) {
         print_folha(t);
         consome(SN, PONTO_VIRGULA);
@@ -276,14 +250,12 @@ void Decl_var() {
     print_folha(t);
     consome(ID, 0);
 
-    // Atribui o offset correto com base no escopo
     if (tokenInfo.idcategoria == VAR_LOCAL) {
         tokenInfo.offset = offset_local++;
     } else if (tokenInfo.idcategoria == PROC_PAR) {
         tokenInfo.offset = offset_param++;
     }
 
-    // Lógica para arrays (não implementada na geração de código ainda)
     if (t.cat == SN && t.codigo == ABRE_COLCHETES) {
         print_folha(t); consome(SN, ABRE_COLCHETES);
         print_folha(t); consome(CT_INT, 0);
@@ -334,7 +306,8 @@ void Cmd() {
     if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_IF) {
         print_folha(t); consome(PALAVRA_RESERVADA, PR_IF);
         print_folha(t); consome(SN, ABRE_PARENTESES);
-        Expr();
+        TipoExpressao expr = Expr();
+        gerar_load_se_necessario(expr);
         print_folha(t); consome(SN, FECHA_PARENTESES);
         
         char rotulo_falso[10];
@@ -364,7 +337,8 @@ void Cmd() {
         
         print_folha(t); consome(PALAVRA_RESERVADA, PR_WHILE);
         print_folha(t); consome(SN, ABRE_PARENTESES);
-        Expr();
+        TipoExpressao expr = Expr();
+        gerar_load_se_necessario(expr);
         gerar_codigo("GOFALSE %s", rotulo_fim);
         print_folha(t); consome(SN, FECHA_PARENTESES);
         Cmd();
@@ -374,10 +348,12 @@ void Cmd() {
     } else if (t.cat == PALAVRA_RESERVADA && t.codigo == PR_RETURN) {
         print_folha(t); consome(PALAVRA_RESERVADA, PR_RETURN);
         if (t.cat != SN || t.codigo != PONTO_VIRGULA) {
-            Expr(); // O valor de retorno é deixado no topo da pilha
+            TipoExpressao expr = Expr();
+            gerar_load_se_necessario(expr);
+        } else {
+             gerar_codigo("PUSH 0"); // Default return for main
         }
         print_folha(t); consome(SN, PONTO_VIRGULA);
-        // A instrução RET será gerada no final de Func_body
     } else if (t.cat == SN && t.codigo == ABRE_CHAVES) {
         print_folha(t); consome(SN, ABRE_CHAVES);
         while (t.cat != SN || t.codigo != FECHA_CHAVES) {
@@ -416,13 +392,12 @@ TipoExpressao Expr_atrib() {
         print_folha(t); consome(SN, SN_ATRIBUICAO);
         TipoExpressao dir = Expr_atrib();
         
-        // Geração de código: Armazena o valor do topo da pilha na variável
-        TokenInfo id_info = buscaDecl(esq.lexema);
-        gerar_codigo("STOR %d, %d", id_info.escopo == GLOBAL ? 0 : 1, id_info.offset);
+        gerar_load_se_necessario(dir);
+        gerar_codigo("STORE %s", esq.lexema);
         
         checa_compatibilidade_atribuicao(esq, dir);
         esq.tipo = dir.tipo;
-        esq.eh_lvalue = 0; // O resultado de uma atribuição não é um L-value
+        esq.eh_lvalue = 0;
     }
     
     diminui_ident();
@@ -435,10 +410,13 @@ TipoExpressao Expr_ou() {
     aumenta_ident();
     TipoExpressao esq = Expr_e();
     while (t.cat == SN && t.codigo == SN_OR) {
+        gerar_load_se_necessario(esq);
         print_folha(t); consome(SN, SN_OR);
         TipoExpressao dir = Expr_e();
+        gerar_load_se_necessario(dir);
         esq = checa_compatibilidade_operador_logico(esq, dir);
         gerar_codigo("OR");
+        esq.eh_lvalue = 0;
     }
     diminui_ident();
     printf("%s</Expr_ou>\n", TABS);
@@ -450,10 +428,13 @@ TipoExpressao Expr_e() {
     aumenta_ident();
     TipoExpressao esq = Expr_relacional();
     while (t.cat == SN && t.codigo == SN_AND) {
+        gerar_load_se_necessario(esq);
         print_folha(t); consome(SN, SN_AND);
         TipoExpressao dir = Expr_relacional();
+        gerar_load_se_necessario(dir);
         esq = checa_compatibilidade_operador_logico(esq, dir);
         gerar_codigo("AND");
+        esq.eh_lvalue = 0;
     }
     diminui_ident();
     printf("%s</Expr_e>\n", TABS);
@@ -464,19 +445,23 @@ TipoExpressao Expr_relacional() {
     printf("%s<Expr_relacional>\n", TABS);
     aumenta_ident();
     TipoExpressao esq = Expr_aditiva();
-    if (t.cat == SN && (t.codigo >= SN_ATRIBUICAO && t.codigo <= SN_MAIOR_IGUAL)) {
+    
+    if (t.cat == SN && (t.codigo == SN_COMPARACAO || t.codigo == SN_DIFERENTE || t.codigo == SN_MENOR || t.codigo == SN_MAIOR || t.codigo == SN_MENOR_IGUAL || t.codigo == SN_MAIOR_IGUAL)) {
+        gerar_load_se_necessario(esq);
         int op = t.codigo;
         print_folha(t); consome(SN, t.codigo);
         TipoExpressao dir = Expr_aditiva();
+        gerar_load_se_necessario(dir);
         esq = checa_compatibilidade_operador_relacional(esq, dir);
         switch (op) {
-            case SN_ATRIBUICAO: gerar_codigo("EQ"); break;
+            case SN_COMPARACAO: gerar_codigo("EQ"); break;
             case SN_DIFERENTE: gerar_codigo("NE"); break;
             case SN_MENOR: gerar_codigo("LT"); break;
             case SN_MAIOR: gerar_codigo("GT"); break;
             case SN_MENOR_IGUAL: gerar_codigo("LE"); break;
             case SN_MAIOR_IGUAL: gerar_codigo("GE"); break;
         }
+        esq.eh_lvalue = 0;
     }
     diminui_ident();
     printf("%s</Expr_relacional>\n", TABS);
@@ -488,12 +473,15 @@ TipoExpressao Expr_aditiva() {
     aumenta_ident();
     TipoExpressao esq = Expr_multiplicativa();
     while (t.cat == SN && (t.codigo == SN_SOMA || t.codigo == SN_SUBTRACAO)) {
+        gerar_load_se_necessario(esq);
         int op = t.codigo;
         print_folha(t); consome(SN, t.codigo);
         TipoExpressao dir = Expr_multiplicativa();
+        gerar_load_se_necessario(dir);
         esq = checa_compatibilidade_operador_aritmetico(esq, dir);
         if (op == SN_SOMA) gerar_codigo("ADD");
         else gerar_codigo("SUB");
+        esq.eh_lvalue = 0;
     }
     diminui_ident();
     printf("%s</Expr_aditiva>\n", TABS);
@@ -505,12 +493,15 @@ TipoExpressao Expr_multiplicativa() {
     aumenta_ident();
     TipoExpressao esq = Fator();
     while (t.cat == SN && (t.codigo == SN_MULTIPLICACAO || t.codigo == SN_DIVISAO)) {
+        gerar_load_se_necessario(esq);
         int op = t.codigo;
         print_folha(t); consome(SN, t.codigo);
         TipoExpressao dir = Fator();
+        gerar_load_se_necessario(dir);
         esq = checa_compatibilidade_operador_aritmetico(esq, dir);
         if (op == SN_MULTIPLICACAO) gerar_codigo("MUL");
         else gerar_codigo("DIV");
+        esq.eh_lvalue = 0;
     }
     diminui_ident();
     printf("%s</Expr_multiplicativa>\n", TABS);
@@ -526,27 +517,26 @@ TipoExpressao Fator() {
     if (t.cat == SN && t.codigo == ABRE_PARENTESES) {
         print_folha(t); consome(SN, ABRE_PARENTESES);
         tipo_fator = Expr();
+        gerar_load_se_necessario(tipo_fator);
         print_folha(t); consome(SN, FECHA_PARENTESES);
+        tipo_fator.eh_lvalue = 0;
     } else if (t.cat == CT_INT) {
         gerar_codigo("PUSH %d", t.valInt);
         tipo_fator.tipo = INT_;
         print_folha(t); consome(t.cat, 0);
     } else if (t.cat == CT_REAL) {
-        // A máquina de pilha do PDF não lida com floats. Ignorando geração de código.
-        // gerar_codigo("PUSHF %f", t.valReal); 
         tipo_fator.tipo = REAL_;
         print_folha(t); consome(t.cat, 0);
     } else if (t.cat == ID) {
         TokenInfo id_info = buscaDecl(t.lexema);
         if (id_info.idcategoria == PROC) {
-            // Chamada de função
             char lexema_id[31];
             strcpy(lexema_id, t.lexema);
             print_folha(t); consome(ID, 0);
             
             print_folha(t); consome(SN, ABRE_PARENTESES);
             if(t.cat != SN || t.codigo != FECHA_PARENTESES) {
-                Expr(); // Processa argumentos
+                Expr();
                 while(t.cat == SN && t.codigo == VIRGULA) {
                      print_folha(t); consome(SN, VIRGULA);
                      Expr();
@@ -557,15 +547,12 @@ TipoExpressao Fator() {
             gerar_codigo("CALL %s", lexema_id);
             tipo_fator.tipo = id_info.tipo;
         } else {
-            // É uma variável
             tipo_fator.tipo = id_info.tipo;
             strcpy(tipo_fator.lexema, id_info.lexema);
             tipo_fator.eh_lvalue = 1;
-            gerar_codigo("LOAD %d, %d", id_info.escopo == GLOBAL ? 0 : 1, id_info.offset);
             print_folha(t); consome(ID, 0);
         }
     } else {
-        // CORRIGIDO: de erro_sintatico para erro_semantico
         erro_semantico("Fator inesperado.");
     }
     
