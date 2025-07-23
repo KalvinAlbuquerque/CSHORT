@@ -2,7 +2,8 @@
   Arquivo para testar um erro de atribuicao de tipos incompativeis.
 */
 
-int main() {
+int main()
+{
     int a;
     int b;
 
